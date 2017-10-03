@@ -1,0 +1,60 @@
+import tensorflow as tf
+import tensorflow.contrib
+import numpy as np
+import chess
+
+tf.app.flags.DEFINE_string('data_dir', '../data/',
+                           'Preprocessed training data directory')
+tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
+                           'List of all labels (uci move notation)')
+tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
+                           'Directory to store network parameters and training logs')
+
+FLAGS = tf.app.flags.FLAGS
+BATCH_SIZE = 32
+
+def encode_board(board):
+    rep = np.zeros((6, 8, 8), dtype=float)
+    occupied_white = board.occupied_co[chess.WHITE]
+    pawns = board.pawns
+    knights = board.knights
+    bishops = board.bishops
+    rooks = board.rooks
+    queens = board.queens
+    kings = board.kings
+    for col in range(0, 8):
+        for row in range(0, 8):
+            mask = chess.BB_SQUARES[row * 8 +col]
+            if pawns & mask:
+                rep[0, col, row] = 1 if occupied_white & mask else -1
+            elif knights & mask:
+                rep[1, col, row] = 1 if occupied_white & mask else -1
+            elif bishops & mask:
+                rep[2, col, row] = 1 if occupied_white & mask else -1
+            elif rooks & mask:
+                rep[3, col, row] = 1 if occupied_white & mask else -1
+            elif queens & mask:
+                rep[4, col, row] = 1 if occupied_white & mask else -1
+            elif kings & mask:
+                rep[5, col, row] = 1 if occupied_white & mask else -1
+    return rep
+
+def load_labels():
+    with open(FLAGS.labels_file) as f:
+        return f.readline().strip().split(" ")
+
+def _parse_example(example_proto):
+    features = {
+        "board/sixlayer": tf.FixedLenFeature([384], tf.float32),
+        "move/halfmove_clock_before": tf.FixedLenFeature((), tf.int64),
+        "move/label": tf.FixedLenFeature((), tf.int64)
+    }
+    parsed_features = tf.parse_single_example(example_proto, features)
+    board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
+    board = tf.transpose(board, perm=[1, 2, 0])
+    return (board, parsed_features["move/halfmove_clock_before"]), parsed_features["move/label"]
+
+def inputs(filenames):
+    dataset = tf.contrib.data.TFRecordDataset(filenames)
+    dataset = dataset.map(_parse_example).shuffle(buffer_size=10000).batch(BATCH_SIZE).repeat()
+    return dataset
