@@ -8,10 +8,8 @@ import model
 FLAGS = tf.app.flags.FLAGS
 NUM_BATCHES =100
 
-validation_filenames = []
-for i in range(3):
-    validation_filenames.append(FLAGS.data_dir + "validation-%.5d-of-00003" % (i + 1))
-
+validation_filenames = input.find_files(FLAGS.data_dir, "train*-of-*")
+print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 
 def accuracy(predictions, labels):

@@ -1,25 +1,15 @@
+import random
+import time
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib
-import random
-import time
-import os
-import fnmatch
 import input
 import model
 
 FLAGS = tf.app.flags.FLAGS
 
-def find_files(directory, pattern):
-    '''Recursively finds all files matching the pattern.'''
-    files = []
-    for root, dirnames, filenames in os.walk(directory):
-        for filename in fnmatch.filter(filenames, pattern):
-            files.append(os.path.join(root, filename))
-    return files
 
-
-train_filenames = find_files(FLAGS.data_dir, "*-of-*")
+train_filenames = input.find_files(FLAGS.data_dir, "*-of-*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 

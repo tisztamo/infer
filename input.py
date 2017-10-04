@@ -1,3 +1,4 @@
+import os, fnmatch
 import tensorflow as tf
 import tensorflow.contrib
 import numpy as np
@@ -12,6 +13,15 @@ tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
 
 FLAGS = tf.app.flags.FLAGS
 BATCH_SIZE = 32
+MATE_CP_SCORE = 20000
+
+def find_files(directory, pattern):
+    '''Recursively finds all files matching the pattern.'''
+    files = []
+    for root, dirnames, filenames in os.walk(directory):
+        for filename in fnmatch.filter(filenames, pattern):
+            files.append(os.path.join(root, filename))
+    return files
 
 def encode_board(board):
     rep = np.zeros((6, 8, 8), dtype=float)
@@ -38,6 +48,11 @@ def encode_board(board):
             elif kings & mask:
                 rep[5, col, row] = 1 if occupied_white & mask else -1
     return rep
+
+def cp_score(chess_uci_score):
+    if chess_uci_score.cp is None:
+        return MATE_CP_SCORE if chess_uci_score.mate > 0 else -MATE_CP_SCORE
+    return chess_uci_score.cp
 
 def load_labels():
     with open(FLAGS.labels_file) as f:

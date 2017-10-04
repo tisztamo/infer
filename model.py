@@ -19,8 +19,7 @@ def bias_variable(shape):
 def conv2d(x, W, stride):
     return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding="SAME")
 
-
-def model(data):
+def feature_extractor(data):
     W_conv1 = weight_variable([5, 5, FEATURE_PLANES, 512])
     b_conv1 = bias_variable([512])
     h_conv1 = tf.nn.relu(conv2d(data[0], W_conv1, 1) + b_conv1)
@@ -35,9 +34,20 @@ def model(data):
 
     h_flat = tf.reshape(h_conv3, [-1, 1024 * 64])
 
+    return h_flat
+
+def model(data, feature_tensor = None):
+    """ data[0]: board representation
+        data[1]: ply_count
+
+        feature_tensor: Extracted features as returned by feature_extractor.
+    """
+    if feature_tensor is None:
+        feature_tensor = feature_extractor(data)
+
     cc = tf.cast([data[1]], tf.float32)
     cc = tf.transpose(cc)
-    h_extra = tf.concat([h_flat, cc], axis=1)
+    h_extra = tf.concat([feature_tensor, cc], axis=1)
 
     W_fc1 = weight_variable([1024 * 64 + 1, HIDDEN])
     b_fc1 = bias_variable([HIDDEN])
