@@ -24,7 +24,8 @@ def parse_position(line):
 
 
 def handle_go(line):
-    return "bestmove " + turk.bestMove(board)
+    move, score, ponder = turk.bestMove(board)
+    return "bestmove " + move + " ponder " + ponder
 
 
 def handle_uci_input(line):
