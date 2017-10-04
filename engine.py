@@ -7,7 +7,7 @@ import inference
 logger = log.getLogger("engine")
 
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
-BEAM_SIZE = 3
+BEAM_SIZE = 5
 label_strings = input.load_labels()
 
 class Engine:
