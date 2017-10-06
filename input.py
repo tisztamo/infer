@@ -4,12 +4,14 @@ import tensorflow.contrib
 import numpy as np
 import chess
 
-tf.app.flags.DEFINE_string('data_dir', '../data/',
+tf.app.flags.DEFINE_string('data_dir', '/mnt/red/train/humanlike/preprocessed/',
                            'Preprocessed training data directory')
 tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
 tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
                            'Directory to store network parameters and training logs')
+tf.app.flags.DEFINE_string('disable_cp', 'false',
+                           'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
 BATCH_SIZE = 32
@@ -64,10 +66,15 @@ def _parse_example(example_proto):
         "move/halfmove_clock_before": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64)
     }
+    if FLAGS.disable_cp == "false":
+        features["board/cp_score"] = tf.FixedLenFeature((), tf.int64)
+
     parsed_features = tf.parse_single_example(example_proto, features)
+    cp_score = parsed_features["board/cp_score"] if FLAGS.disable_cp == "false" else 0
+    cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/halfmove_clock_before"]), parsed_features["move/label"]
+    return (board, parsed_features["move/halfmove_clock_before"]), parsed_features["move/label"], cp_score
 
 def inputs(filenames):
     dataset = tf.contrib.data.TFRecordDataset(filenames)

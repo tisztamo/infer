@@ -26,6 +26,9 @@ tf.app.flags.DEFINE_string('eval_depth', '20',
 tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
                            'UCI engine executable')
 
+tf.app.flags.DEFINE_string('skip_games', '0',
+                           'Skip the first N games')
+
 FLAGS = tf.app.flags.FLAGS
 labels = []
 
@@ -62,13 +65,15 @@ class Engine:
         self.last_command = None
         self.last_board = None
 
-    def start_evaluate_board(self, board):
+    def start_evaluate_board(self, board, game, move):
         depth = int(FLAGS.eval_depth)
         self.uci_engine.ucinewgame()
+        self.last_board = board.copy()
         self.uci_engine.position(board)
         self.start_ts = time.time()
         self.last_command = self.uci_engine.go(depth=depth, async_callback=True)
-        self.last_board = board.copy()
+        self.last_game = game
+        self.last_move = move
 
     def is_evaluation_available(self):
         return self.last_command.done()
@@ -83,8 +88,8 @@ class Engine:
         self.last_command = None
         self.last_board = None
         score = input.cp_score(self.info_handler.info["score"][1])
-        #print(board.fen(), best_move, score, "complexity:", self.info_handler.complexity, "time:", used_time, "ratio:", self.info_handler.complexity / used_time)
-        return board, score, best_move, self.info_handler.complexity
+        #print(board.fen(), self.last_move, best_move, score, "complexity:", self.info_handler.complexity, "time:", used_time, "ratio:", self.info_handler.complexity / used_time)
+        return board, score, best_move, self.info_handler.complexity, self.last_game, self.last_move
 
 
 def filter_game(game):
@@ -184,6 +189,18 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move):
     return example
 
 
+def _open_pgn_file(filename):
+    f = codecs.open(filename, encoding="latin-1")#utf-8-sig
+    skip = int(FLAGS.skip_games)
+    while skip > 0:
+        line = f.readline()
+        if line.startswith("[Event "):
+            skip -= 1
+            if skip == 0:
+                while line.strip() != "":
+                    line = f.readline()
+    return f
+
 def _process_pgn_file(filename, writer, engines):
     num_filtered_out = 0
     num_processed = 0
@@ -191,7 +208,7 @@ def _process_pgn_file(filename, writer, engines):
     engine_idx = 0
     engine = engines[engine_idx]
 
-    with codecs.open(filename, encoding="latin-1") as f:#utf-8-sig
+    with _open_pgn_file(filename) as f:
         while True:
             game = chess.pgn.read_game(f)
             if not game:
@@ -212,16 +229,16 @@ def _process_pgn_file(filename, writer, engines):
                                 engine_idx = (engine_idx + 1) % len(engines)
                                 engine = engines[engine_idx]
 
-                        last_board, score, best_move, complexity = engine.get_evaluation_result()
-                        example = _convert_to_example(last_board, move, game, score, complexity, best_move)
+                        last_board, score, best_move, complexity, last_game, last_move = engine.get_evaluation_result()
+                        example = _convert_to_example(last_board, last_move, last_game, score, complexity, best_move)
                         writer.write(example.SerializeToString())
                     except Exception as x:
                         print("Error while processing:", x)
 
                 num_moves += 1
-                board.push(move)
-                engine.start_evaluate_board(board)
+                engine.start_evaluate_board(board, game, move)
                 engine_idx = (engine_idx + 1) % len(engines)
+                board.push(move)
 
             num_processed += 1
             if num_processed % 100 == 1:
