@@ -34,7 +34,8 @@ class Engine:
          relative to the side to move"""
         score = self.evaluateStatic(board)
         if score.cp is None:
-            return -100000 if score.mate < 0 else 100000
+            mate_val = 20000 - (12 - abs(score.mate)) * 1000
+            return -mate_val if score.mate < 0 else mate_val
         return score.cp
 
     def search(self, board, depth=5):
@@ -72,7 +73,7 @@ class Engine:
         board = board.copy()
         current_score = self.evaluate(board)
         move, new_score, ponder = self.search(board)
-        logger.info(move + ": from " + str(current_score) + " to " + str(new_score))
+        logger.info(str(move) + ": from " + str(current_score) + " to " + str(new_score))
         return move, new_score, ponder
 
 
