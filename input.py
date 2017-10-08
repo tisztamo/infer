@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('disable_cp', 'false',
                            'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):

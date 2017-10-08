@@ -6,6 +6,18 @@ FEATURE_PLANES = 6
 NUM_LABELS = 1972
 HIDDEN = 2048
 
+def summary(var):
+  """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+  with tf.name_scope('summaries'):
+    mean = tf.reduce_mean(var)
+    tf.summary.scalar('mean', mean)
+    with tf.name_scope('stddev'):
+      stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    tf.summary.scalar('stddev', stddev)
+    tf.summary.scalar('max', tf.reduce_max(var))
+    tf.summary.scalar('min', tf.reduce_min(var))
+    tf.summary.histogram('histogram', var)
+
 def weight_variable(shape):
     initial = tf.truncated_normal(shape, stddev=0.01)
     return tf.Variable(initial)
@@ -88,13 +100,13 @@ def value_model(data, feature_tensor=None, trainables=[]):
     trainables.append(value_W_fc1)
     value_b_fc1 = bias_variable([HIDDEN])
     trainables.append(value_b_fc1)
-    value_h_fc1 = tf.nn.relu(tf.matmul(value_h_extra, value_W_fc1) + value_b_fc1)
+    value_h_fc1 = tf.nn.tanh(tf.matmul(value_h_extra, value_W_fc1) + value_b_fc1)
 
     value_W_fc2 = weight_variable([HIDDEN, HIDDEN])
     trainables.append(value_W_fc2)
     value_b_fc2 = bias_variable([HIDDEN])
     trainables.append(value_b_fc2)
-    value_h_fc2 = tf.nn.relu(tf.matmul(value_h_fc1, value_W_fc2) + value_b_fc2)
+    value_h_fc2 = tf.nn.tanh(tf.matmul(value_h_fc1, value_W_fc2) + value_b_fc2)
 
     value_W_fc3 = weight_variable([HIDDEN, 1])
     trainables.append(value_W_fc3)
