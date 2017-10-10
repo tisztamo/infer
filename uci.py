@@ -9,6 +9,7 @@ import chess
 
 board = chess.Board()
 turk = engine.Engine()
+remembered_move = None
 
 def parse_position(line):
     global board
@@ -24,7 +25,8 @@ def parse_position(line):
 
 
 def handle_go(line):
-    move, score, ponder = turk.bestMove(board)
+    global remembered_move
+    move, score, ponder, remembered_move = turk.bestMove(board, remembered_move)
     return "bestmove " + str(move) + " ponder " + str(ponder)
 
 
