@@ -8,11 +8,12 @@ import inference
 logger = log.getLogger("engine")
 
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
-BACK_ENGINE_DEPTH = 5
+BACK_ENGINE_DEPTH = 1
+MATE_VAL=  10000 + BACK_ENGINE_DEPTH * 1000
 EVAL_RANDOMNESS = 10
-BEAM_SIZES = [0, 5, 8, 10]
+BEAM_SIZES = [0, 10, 12]
 
-STALEMATE = -100000 #Smaller than the smallest possible score
+STALEMATE_SCORE = -20
 
 label_strings = input.load_labels()
 
@@ -53,10 +54,19 @@ class Engine:
             return move, ret_score, ponder
         return move, score.cp, ponder
 
-    def search(self, board, depth=3, try_move=None):
+    def search(self, board, depth=2, try_move=None):
+        STALEMATE = -100000 #Smaller than the smallest possible score
+        if board.is_checkmate():
+            print("Checkmate found at depth", depth)
+            if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
+                score = MATE_VAL
+            else:
+                score = -MATE_VAL
+            return None, score, None, None
+
         if depth == 0:
             move, score, ponder = self.evaluate(board)
-            return move, score, ponder, "Pass"
+            return move, score, ponder, None
         beam_size = BEAM_SIZES[depth]
         predictions = inference.predict(board.fen())
         candidates = np.argpartition(predictions, -20)[-20:]
@@ -77,8 +87,9 @@ class Engine:
                 logger.debug("Illegal move: " + str(move))
                 continue
             ponder, score, ponder_ponder, _ = self.search(board, depth - 1)
-            score = 0 if score == STALEMATE else -score - 1
-            #logger.info(str(depth) + str(move) + ": " +str(score))
+            score = STALEMATE_SCORE if score == STALEMATE else -score - 1
+            if try_move is not None and move_counter == 0:
+                logger.info("try: " + str(try_move) + ", d: " + str(depth) + " " + str(move) + ": " +str(score))
             if score > best_score + 10:
                 best_move = move
                 best_score = score
@@ -88,6 +99,7 @@ class Engine:
             move_counter += 1
             if move_counter >= beam_size:
                 break
+
         return best_move, best_score, best_ponder, best_ponder_ponder
 
 
@@ -103,7 +115,8 @@ class Engine:
 def main():
     e = Engine()
     b = chess.Board()
-    best_move, score, ponder, ponder_ponder = e.bestMove(b)
+    ponder_ponder = None
+    best_move, score, ponder, ponder_ponder = e.bestMove(b, ponder_ponder)
     logger.info("Best move:" + best_move + "(" + str(score) + ") ponder " + ponder)
 
 if __name__ == "__main__":

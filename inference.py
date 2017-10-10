@@ -8,25 +8,24 @@ import chess
 
 FLAGS = tf.app.flags.FLAGS
 
-#with tf.device('/cpu:0'):
+with tf.device('/cpu:0'):
+    board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])
+    extrainfo = tf.placeholder(tf.float32, shape=[1])
+    example = [board, extrainfo]
+    logits = model.model(example)
 
-board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])
-extrainfo = tf.placeholder(tf.float32, shape=[1])
-example = [board, extrainfo]
-logits = model.model(example)
+    saver = tf.train.Saver()
 
-saver = tf.train.Saver()
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth=True
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth=True
-
-sess = tf.Session(config=config)
-checkpoint = tf.train.get_checkpoint_state(FLAGS.logdir)
-if checkpoint and checkpoint.model_checkpoint_path:
-    saver.restore(sess, checkpoint.model_checkpoint_path)
-    print ("Successfully loaded:", checkpoint.model_checkpoint_path)
-else:
-    print("No checkpoint found in logdir.")
+    sess = tf.Session(config=config)
+    checkpoint = tf.train.get_checkpoint_state(FLAGS.logdir)
+    if checkpoint and checkpoint.model_checkpoint_path:
+        saver.restore(sess, checkpoint.model_checkpoint_path)
+        print ("Successfully loaded:", checkpoint.model_checkpoint_path)
+    else:
+        print("No checkpoint found in logdir.")
 
 def predict(fen):
     global logits, prediction, sess, label_strings, board
