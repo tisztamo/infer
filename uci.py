@@ -10,7 +10,9 @@ import numpy as np
 
 PLAY_AGAINST_HUMAN = True
 MULTIPV = 10
-MAX_LOSS_PER_MOVE = 100
+MAX_LOSS_PER_MOVE = 300
+DESIRED_ADVANTAGE = 20
+min_target_loss = 90
 
 board = chess.Board()
 predictions = None
@@ -57,7 +59,7 @@ def handle_go(line):
             candidate["appeal"] = 0
     words = line.split(" ")
     if PLAY_AGAINST_HUMAN:
-        retval = "go movetime 4000"
+        retval = "go movetime 1000"
     else:
         if len(words) <= 1 or words[1] != "wtime":
             return line
@@ -88,6 +90,8 @@ def handle_uci_input(line):
     if line.startswith("position"):
         parse_position(line)
         predictions = inference.predict(board.fen())
+        max_prob = np.max(predictions)
+        print("Max prob", max_prob)
     elif line.startswith("setoption name MultiPV"):
         return False
     elif line.startswith("go"):
@@ -95,14 +99,21 @@ def handle_uci_input(line):
     return line
 
 def target_loss(best_score):
-    return 0
-    if best_score < 20:
+    if best_score < DESIRED_ADVANTAGE:
         target = 0
     else:
-        target = (best_score - 20) * 0.2
-    target = min(target, MAX_LOSS_PER_MOVE)
+        target = (best_score - DESIRED_ADVANTAGE) * 0.15
+    target = max(min_target_loss, min(target, MAX_LOSS_PER_MOVE))
     print("Best Score:", best_score, "Target loss:", target)
     return target
+
+def print_candidate_moves(candidate_moves):
+    moves = sorted(candidate_moves, key=lambda c: -c["prob"])
+    for move in moves:
+        try:
+            print("Candidate", move["uci"], move["prob"], move["lost_score"], move["appeal"])
+        except:
+            print(move)
 
 def override_bestmove(best_move):
     global board
@@ -134,7 +145,7 @@ def override_bestmove(best_move):
             candidate["lost_score"] = move_loss
             candidate["prob"] = round(probability * 10)
             candidate["appeal"] = round(
-                probability / (abs(move_loss - target) * 0.1 + 5) * 1000)
+                probability / (abs(move_loss - target) * 0.05 + 5) * 1000)
 
         candidate_moves.sort(key=lambda c: -c["appeal"])
 
@@ -147,7 +158,7 @@ def override_bestmove(best_move):
 
     my_best["label"] = board.san(chess.Move.from_uci(my_best["uci"]))
 
-    print(candidate_moves)
+    print_candidate_moves(candidate_moves)
     if lost_score == 0:
         print("Selected best:", my_best)
     else:
