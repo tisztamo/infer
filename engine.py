@@ -2,11 +2,11 @@ import random
 import chess, chess.uci
 import numpy as np
 import log
-import input
-import inference
+import input, inference, pgnwriter
 
 logger = log.getLogger("engine")
 
+ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 BACK_ENGINE_DEPTH = 1
 MATE_VAL=  10000 + BACK_ENGINE_DEPTH * 1000
@@ -20,7 +20,11 @@ label_strings = input.load_labels()
 class Engine:
     def __init__(self, back_engine_exe=BACK_ENGINE_EXE):
         self.back_engine = None
+        self.try_move = None
+        self.current_board = chess.Board()
         self._initBackEngine(back_engine_exe)
+        self.newGame()
+        self.name = ENGINE_NAME
 
     def _initBackEngine(self, back_engine_exe):
         self.back_engine = chess.uci.popen_engine(back_engine_exe)
@@ -111,12 +115,32 @@ class Engine:
         logger.info(str(move) + ": from " + str(current_score) + " to " + str(new_score) + " ponder " + str(ponder) + " ponderponder " + str(ponder_ponder))
         return move, new_score, ponder, ponder_ponder
 
+    def newGame(self):
+        pgnwriter.write_history(self.current_board, self)
+        self.current_board = chess.Board()
+
+    def move(self, board):
+        if board.fullmove_number > 1:
+            last_move = board.peek()
+            self.current_board.push(last_move)
+        if board.board_fen() != self.current_board.board_fen():
+            if self.current_board.fullmove_number > 1:
+                logger.error("Incosistent board, dropping the old one " + self.current_board.fen() + " for " + board.fen())
+            self.current_board = board.copy()
+
+        self.color = self.current_board.turn
+
+        move, score, ponder, self.try_move = self.bestMove(board, self.try_move)
+        if move is not None:
+            self.current_board.push_uci(move)
+        return move, score, ponder
+
 
 def main():
     e = Engine()
     b = chess.Board()
     ponder_ponder = None
-    best_move, score, ponder, ponder_ponder = e.bestMove(b, ponder_ponder)
+    best_move, score, ponder, ponder_ponder = e.move(b, ponder_ponder)
     logger.info("Best move:" + best_move + "(" + str(score) + ") ponder " + ponder)
 
 if __name__ == "__main__":
