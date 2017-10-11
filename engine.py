@@ -61,7 +61,6 @@ class Engine:
     def search(self, board, depth=2, try_move=None):
         STALEMATE = -100000 #Smaller than the smallest possible score
         if board.is_checkmate():
-            print("Checkmate found at depth", depth)
             if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
                 score = MATE_VAL
             else:
