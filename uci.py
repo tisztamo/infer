@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import sys
+import sys, time
 import fnmatch
 from nbstreamreader import NonBlockingStreamReader
 import engine
@@ -9,7 +9,6 @@ import chess
 
 board = chess.Board()
 turk = engine.Engine()
-remembered_move = None
 
 def parse_position(line):
     global board
@@ -20,13 +19,11 @@ def parse_position(line):
             board.push_uci(move)
     elif words[1] == "fen":
         fen = " ".join(words[2:]).replace(" -1 ", " - ")
-        print("fen", fen)
         board = chess.Board(fen)
 
 
 def handle_go(line):
-    global remembered_move
-    move, score, ponder, remembered_move = turk.bestMove(board, remembered_move)
+    move, score, ponder = turk.move(board)
     return "bestmove " + str(move) + " ponder " + str(ponder)
 
 
@@ -37,8 +34,13 @@ def handle_uci_input(line):
         return handle_go(line)
     elif line == "uci":
         return "uciok"
+    elif line == "ucinewgame":
+        turk.newGame()
     elif line == "isready":
         return "readyok"
+    elif line == "quit":
+        turk.newGame()
+        sys.exit(0)
     return line
 
 
