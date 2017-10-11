@@ -12,7 +12,7 @@ with tf.device('/cpu:0'):
     board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])
     extrainfo = tf.placeholder(tf.float32, shape=[1])
     example = [board, extrainfo]
-    logits = model.model(example)
+    logits, _ = model.model(example)
 
     saver = tf.train.Saver()
 
