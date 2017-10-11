@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import sys, time
+import random
 import fnmatch
 from nbstreamreader import NonBlockingStreamReader
 import engine
@@ -46,6 +47,7 @@ def parse_position(line):
 
 def handle_go(line):
     move, score, ponder = turk.move(board)
+    time.sleep(random.randint(0, 6))
     return "bestmove " + str(move) + " ponder " + str(ponder)
 
 

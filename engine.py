@@ -8,7 +8,7 @@ logger = log.getLogger("engine")
 
 ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
-BACK_ENGINE_DEPTH = 1
+BACK_ENGINE_DEPTH = 5
 MATE_VAL=  10000 + BACK_ENGINE_DEPTH * 1000
 EVAL_RANDOMNESS = 10
 BEAM_SIZES = [0, 10, 12]
