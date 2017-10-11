@@ -182,7 +182,7 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move):
         #'game/time_increment': _int64_feature(time_increment),
         'game/total_ply_count': _int64_feature(ply_count),
         'game/result': _int64_feature(result_code),
-        'move/halfmove_clock_before': _int64_feature(board.halfmove_clock),
+        'move/turn': _int64_feature(1 if board.turn == chess.WHITE else 0),
         'move/uci': _bytes_feature(tf.compat.as_bytes(move_uci)),
         'move/label': _int64_feature(labels.index(move_uci))
         }))
