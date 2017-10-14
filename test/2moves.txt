@@ -4,6 +4,5 @@ position startpos
 go
 position startpos moves e2e4 d7d5
 go
-ucinewgame
 quit
 

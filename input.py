@@ -1,4 +1,4 @@
-import os, fnmatch
+import os, fnmatch, zlib
 import tensorflow as tf
 import tensorflow.contrib
 import numpy as np
@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('disable_cp', 'false',
                            'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):
@@ -51,10 +51,8 @@ def encode_board(board):
                 rep[5, col, row] = 1 if occupied_white & mask else -1
     return rep
 
-def cp_score(chess_uci_score):
-    if chess_uci_score.cp is None:
-        return MATE_CP_SCORE if chess_uci_score.mate > 0 else -MATE_CP_SCORE
-    return chess_uci_score.cp
+def hash_32(str):
+    return zlib.adler32(str)
 
 def load_labels():
     with open(FLAGS.labels_file) as f:
@@ -63,7 +61,9 @@ def load_labels():
 def _parse_example(example_proto):
     features = {
         "board/sixlayer": tf.FixedLenFeature([384], tf.float32),
-        "move/halfmove_clock_before": tf.FixedLenFeature((), tf.int64),
+        #"move/halfmove_clock_before": tf.FixedLenFeature((), tf.int64),
+        "move/turn": tf.FixedLenFeature((), tf.int64),
+        "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64)
     }
     if FLAGS.disable_cp == "false":
@@ -74,7 +74,7 @@ def _parse_example(example_proto):
     cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/halfmove_clock_before"]), parsed_features["move/label"], cp_score
+    return (board, parsed_features["move/turn"]), parsed_features["move/label"], cp_score
 
 def inputs(filenames):
     dataset = tf.contrib.data.TFRecordDataset(filenames)

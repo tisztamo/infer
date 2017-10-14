@@ -8,8 +8,9 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
+TRANSFER_LEARNING = True
 
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-first5000-fixed")
+train_filenames = input.find_files(FLAGS.data_dir, "*train*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -28,12 +29,13 @@ logits, trainables = model.model(examples, features, trainables)
 labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
-predicted_scores, score_trainables = model.value_model(examples, features, [])
-sq = tf.squared_difference(predicted_scores, cp_scores)
-score_loss = tf.reduce_mean(sq)
-model.summary(score_loss)
+#predicted_scores, score_trainables = model.value_model(examples, features, [])
+#sq = tf.squared_difference(predicted_scores, cp_scores)
+#score_loss = tf.reduce_mean(sq)
+#model.summary(score_loss)
 
-training_op = tf.train.AdagradOptimizer(0.1).minimize(loss)
+trained_vars = trainables[-2:] if TRANSFER_LEARNING else trainables
+training_op = tf.train.AdagradOptimizer(0.001).minimize(loss, var_list=trained_vars)
 
 #score_optimizer = tf.train.AdagradOptimizer(0.0001)#.minimize(score_loss)#, var_list=score_trainables
 #score_gradients, score_variables = zip(*score_optimizer.compute_gradients(score_loss))
