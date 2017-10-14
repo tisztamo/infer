@@ -12,8 +12,9 @@ import tensorflow as tf
 import chess
 import chess.pgn
 import chess.uci
+import log
 
-import input
+import input, engine
 
 tf.app.flags.DEFINE_string('train_dir', '../data/train/',
                            'Training data directory')
@@ -21,7 +22,7 @@ tf.app.flags.DEFINE_string('validation_dir', '../data/validation/',
                            'Validation data directory')
 tf.app.flags.DEFINE_string('output_dir', '../data/',
                            'Output data directory')
-tf.app.flags.DEFINE_string('eval_depth', '20',
+tf.app.flags.DEFINE_string('eval_depth', '12',
                            'Depth to eval position using the external engine')
 tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
                            'UCI engine executable')
@@ -55,7 +56,7 @@ class InfoHandler(chess.uci.InfoHandler):
         super(InfoHandler, self).pv(moves)
 
 
-class Engine:
+class EvalEngine:
     def __init__(self):
         self.uci_engine = chess.uci.popen_engine(FLAGS.engine_exe)
         self.info_handler = InfoHandler()
@@ -87,13 +88,12 @@ class Engine:
         board = self.last_board
         self.last_command = None
         self.last_board = None
-        score = input.cp_score(self.info_handler.info["score"][1])
+        score = engine.Engine.cp_score(self.info_handler.info["score"][1])
         #print(board.fen(), self.last_move, best_move, score, "complexity:", self.info_handler.complexity, "time:", used_time, "ratio:", self.info_handler.complexity / used_time)
         return board, score, best_move, self.info_handler.complexity, self.last_game, self.last_move
 
 
 def filter_game(game):
-    return True
     try:
         white_is_comp = (game.headers["WhiteIsComp"].lower() == "yes")
     except:
@@ -102,17 +102,21 @@ def filter_game(game):
         black_is_comp = (game.headers["BlackIsComp"].lower() == "yes")
     except:
         black_is_comp = False
-    return not white_is_comp and not black_is_comp
+    try:
+        event = game.headers["Event"]
+    except:
+        return False
+    return not white_is_comp and not black_is_comp and event.find("960") == -1
 
 def load_labels():
-    with open(FLAGS.labels_file) as f:
+    with codecs.open(FLAGS.labels_file, encoding="latin1") as f:
         return f.readline().strip().split(" ")
 
 
 def init_engines(num=4):
     retval = []
     for i in range(num):
-        retval.append(Engine())
+        retval.append(EvalEngine())
     return retval
 
 
@@ -135,7 +139,7 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _convert_to_example(board, move, game, cp_score, complexity, best_move):
+def _convert_to_example(board, move, game, cp_score, complexity, best_move, player):
     game_headers = game.headers
     sixlayer_rep = input.encode_board(board)
     move_uci = move.uci()
@@ -175,13 +179,15 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move):
         result = -1
     example = tf.train.Example(features=tf.train.Features(feature={
         'board/sixlayer': tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(sixlayer_rep))),
-        'board/cp_score': _int64_feature(int(cp_score)),
+        'board/fen': _bytes_feature(tf.compat.as_bytes(board.fen())),
+        'board/cp_score/' + FLAGS.eval_depth: _int64_feature(int(cp_score)),
         'board/complexity': _int64_feature(complexity),
         'board/best_uci': _bytes_feature(tf.compat.as_bytes(best_move.uci())),
         #'game/basetime': _int64_feature(base_time),
         #'game/time_increment': _int64_feature(time_increment),
         'game/total_ply_count': _int64_feature(ply_count),
         'game/result': _int64_feature(result_code),
+        'move/player': _int64_feature(input.hash_32(player)),
         'move/turn': _int64_feature(1 if board.turn == chess.WHITE else 0),
         'move/uci': _bytes_feature(tf.compat.as_bytes(move_uci)),
         'move/label': _int64_feature(labels.index(move_uci))
@@ -216,8 +222,13 @@ def _process_pgn_file(filename, writer, engines):
             if not filter_game(game):
                 num_filtered_out += 1
                 continue
+            players = [game.headers["White"], game.headers["Black"]]
             board = game.board()
             for move in game.main_line():
+                if not board.is_valid():
+                    print("Invalid board:", board.fen())
+                    print("Skipping whole game", game.headers)
+                    break
                 engine = engines[engine_idx]
                 if num_moves >= len(engines):
                     try:
@@ -230,7 +241,8 @@ def _process_pgn_file(filename, writer, engines):
                                 engine = engines[engine_idx]
 
                         last_board, score, best_move, complexity, last_game, last_move = engine.get_evaluation_result()
-                        example = _convert_to_example(last_board, last_move, last_game, score, complexity, best_move)
+                        player = players[0 if last_board.turn == chess.WHITE else 1]
+                        example = _convert_to_example(last_board, last_move, last_game, score, complexity, best_move, player)
                         writer.write(example.SerializeToString())
                     except Exception as x:
                         print("Error while processing:", x)
@@ -262,6 +274,7 @@ def _process_dataset(dataset_name, directory, engines):
         processed, dropped, moves = _process_pgn_file(join(directory, filename), writer, engines)
         print("Dropped", dropped, "games, processed", processed, ", containing", moves, "halfmoves.")
         writer.close()
+        time.sleep(3)
         
 
 def main(unused_argv):
