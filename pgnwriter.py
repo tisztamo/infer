@@ -1,39 +1,57 @@
 import collections
 from datetime import date
 import chess, chess.pgn
+import engine
 
 MY_NAME = "Turk Development"
 
+class PGNWriter():
+    def __init__(self, engine=None):
+        self.board = None
+        self.game = None
+        self.last_node = None
+        self.engine = engine
+        self.new_game()
 
-def board_to_game(board):
-    game = chess.pgn.Game()
+    def new_game(self):
+        if self.board is not None and self.board.fullmove_number > 1:
+            self.end_game()
+        self.board = chess.Board()
+        self.game = chess.pgn.Game()
+        self.last_node = self.game
 
-    # Undo all moves.
-    switchyard = collections.deque()
-    while board.move_stack:
-        switchyard.append(board.pop())
+    def end_game(self, result = None):
+        if result is None:
+            result = self.board.result()
+        self.game.headers["Result"] = result
+        self.write_history()
 
-    game.setup(board)
-    node = game
+    def move(self, move_):
+        lost_score = None
+        if isinstance(move_, basestring):
+            move = chess.Move.from_uci(move_)
+        elif isinstance(move_, engine.CandidateMove):
+            move = chess.Move.from_uci(move_.uci)
+            lost_score = move_.lost_score
+        else:
+            move = move_
+        self.last_node = self.last_node.add_variation(move)
+        if lost_score is not None:
+            if lost_score >= 300:
+                self.last_node.nags.add(chess.pgn.NAG_BLUNDER)
+            elif lost_score >= 100:
+                self.last_node.nags.add(chess.pgn.NAG_MISTAKE)
+        self.board.push(move)
+        if self.board.is_game_over():
+            self.end_game()
 
-    # Replay all moves.
-    while switchyard:
-        move = switchyard.pop()
-        node = node.add_variation(move)
-        board.push(move)
-
-    game.headers["Result"] = board.result()
-    return game
-
-def write_history(board, engine=None):
-    if board.fullmove_number > 1:
-        game = board_to_game(board)
-        if engine:
-            if engine.color == chess.WHITE:
-                game.headers["White"] = engine.name
+    def write_history(self):
+        if self.engine:
+            if self.engine.color == chess.WHITE:
+                self.game.headers["White"] = self.engine.name
             else:
-                game.headers["Black"] = engine.name
-            game.headers["Date"] = date.today().isoformat().replace("-", ".")
+                self.game.headers["Black"] = self.engine.name
+            self.game.headers["Date"] = date.today().isoformat().replace("-", ".")
         with open("history.pgn", "a") as pgn_file:
             exporter = chess.pgn.FileExporter(pgn_file)
-            game.accept(exporter)
+            self.game.accept(exporter)
