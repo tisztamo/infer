@@ -55,4 +55,7 @@ class PGNWriter():
             self.game.headers["Date"] = date.today().isoformat().replace("-", ".")
         with open("history.pgn", "a") as pgn_file:
             exporter = chess.pgn.FileExporter(pgn_file)
-            self.game.accept(exporter)
+            try:
+                self.game.accept(exporter)
+            except Exception as e:
+                print("Unable to export game", e)

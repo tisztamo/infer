@@ -2,7 +2,7 @@ import unittest, random
 from mock import patch
 import chess, chess.uci
 import numpy as np
-import engine
+import engine, strength
 
 class TestEngine(unittest.TestCase):
     def setUp(self):
@@ -50,13 +50,13 @@ class TestEngine(unittest.TestCase):
         np.testing.assert_array_equal(candidates, gt)
 
     def test_appeal_higher_prob_accounts_score_loss(self):
-        dobule_prob_accountsfor_cp = engine.DOUBLE_PROB_ACCOUNTS_FOR_CP
+        dobule_prob_accountsfor_cp = self.engine.strengthManager.double_prob_accounts_for_cp(self.engine.current_board)
         for i in range(1000):
             base_prob = random.random() * 15
             best_score = random.randint(-5000, 5000)
-            c1 = engine.CandidateMove("e2e4", base_prob, best_score)
-            c2 = engine.CandidateMove("d2d4", 2 * base_prob, best_score - dobule_prob_accountsfor_cp)
-            c3 = engine.CandidateMove("g1f3", 4 * base_prob, best_score - 2 * dobule_prob_accountsfor_cp)
+            c1 = engine.CandidateMove(self.engine, "e2e4", base_prob, best_score)
+            c2 = engine.CandidateMove(self.engine, "d2d4", 2 * base_prob, best_score - dobule_prob_accountsfor_cp)
+            c3 = engine.CandidateMove(self.engine, "g1f3", 4 * base_prob, best_score - 2 * dobule_prob_accountsfor_cp)
             #print(c1.cp_score, c1.probability, ":", c2.cp_score, c2.probability, ":", c3.cp_score, c3.probability)
             c1_appeal = c1.calculate_appeal(best_score)
             self.assertAlmostEqual(c1_appeal, c2.calculate_appeal(best_score))

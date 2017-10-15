@@ -1,0 +1,6 @@
+uci
+ucinewgame
+position fen 8/1pk5/7p/p7/P5n1/4p3/4q3/7K w - - 5 52
+go
+quit
+

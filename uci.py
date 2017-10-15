@@ -81,13 +81,6 @@ def handle_uci_input(line):
 #     print("Best Score:", best_score, "Target loss:", target)
 #     return target
 
-# def print_candidate_moves(candidate_moves):
-#     moves = sorted(candidate_moves, key=lambda c: -c["prob"])
-#     for move in moves:
-#         try:
-#             print("Candidate", move["uci"], move["prob"], move["lost_score"], move["appeal"])
-#         except:
-#             print(move)
 
 def main():
     stdin = NonBlockingStreamReader(sys.stdin)
