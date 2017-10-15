@@ -31,17 +31,18 @@ class PGNWriter():
         if isinstance(move_, basestring):
             move = chess.Move.from_uci(move_)
         elif isinstance(move_, engine.CandidateMove):
-            move = chess.Move.from_uci(move_.uci)
+            move = chess.Move.from_uci(move_.uci) if move_.uci is not None else None
             lost_score = move_.lost_score
         else:
             move = move_
-        self.last_node = self.last_node.add_variation(move)
-        if lost_score is not None:
-            if lost_score >= 300:
-                self.last_node.nags.add(chess.pgn.NAG_BLUNDER)
-            elif lost_score >= 100:
-                self.last_node.nags.add(chess.pgn.NAG_MISTAKE)
-        self.board.push(move)
+        if move is not None:
+            self.last_node = self.last_node.add_variation(move)
+            if lost_score is not None:
+                if lost_score >= 300:
+                    self.last_node.nags.add(chess.pgn.NAG_BLUNDER)
+                elif lost_score >= 100:
+                    self.last_node.nags.add(chess.pgn.NAG_MISTAKE)
+            self.board.push(move)
         if self.board.is_game_over():
             self.end_game()
 
@@ -54,4 +55,7 @@ class PGNWriter():
             self.game.headers["Date"] = date.today().isoformat().replace("-", ".")
         with open("history.pgn", "a") as pgn_file:
             exporter = chess.pgn.FileExporter(pgn_file)
-            self.game.accept(exporter)
+            try:
+                self.game.accept(exporter)
+            except Exception as e:
+                print("Unable to export game", e)

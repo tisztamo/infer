@@ -2,7 +2,7 @@ import random
 import chess, chess.uci
 import numpy as np
 import log
-import input, inference
+import input, inference, strength
 
 logger = log.getLogger("engine")
 
@@ -10,9 +10,8 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 6
+BACK_ENGINE_DEPTH = 11
 BEAM_SIZES = [0, 10, 12]
-DOUBLE_PROB_ACCOUNTS_FOR_CP = 950.0
 MAX_BLUNDER = 500
 EVAL_RANDOMNESS = 10
 STALEMATE_SCORE = -20
@@ -22,7 +21,8 @@ label_strings = input.load_labels()
 class CandidateMove:
     INVALID_APPEAL = -1000
 
-    def __init__(self, uci, probability, cp_score = None, ponder = None):
+    def __init__(self, engine, uci, probability, cp_score = None, ponder = None):
+        self.engine = engine
         self.uci = uci
         self.probability = probability
         self.appeal = self.INVALID_APPEAL
@@ -39,11 +39,10 @@ class CandidateMove:
             self.appeal = self.INVALID_APPEAL
             return
         prob = max(self.probability, 0.0001)
-        self.appeal = prob * pow(2.0, float(self.cp_score - best_score) / DOUBLE_PROB_ACCOUNTS_FOR_CP)
+        self.appeal = prob * pow(2.0, float(self.cp_score - best_score) / self.engine.strengthManager.double_prob_accounts_for_cp())
         self.lost_score = best_score - self.cp_score
         #print("Prob", prob, "Lost_score", best_score - self.cp_score, "Appeal", self.appeal)
         return self.appeal
-
 
 class Engine:
     def __init__(self):
@@ -52,6 +51,7 @@ class Engine:
         self.current_board = chess.Board()
         self.newGame()
         self.name = ENGINE_NAME
+        self.strengthManager = strength.StrengthManager(self)
 
     @staticmethod
     def cp_score(chess_uci_score):
@@ -69,10 +69,10 @@ class Engine:
         self.back_engine.uci()
         logger.info("Opened back-engine " + self.back_engine.name)
 
-    def evaluateStatic(self, board):
+    def evaluateStatic(self, board, back_engine_depth=BACK_ENGINE_DEPTH):
         """Returns a chess.uci.Score with the static evaluation of the move"""
         self.back_engine.position(board.copy())
-        move, ponder = self.back_engine.go(depth=BACK_ENGINE_DEPTH)
+        move, ponder = self.back_engine.go(depth=back_engine_depth)
         score = self.info_handler.info["score"][1]
         if score.cp is not None:
             score = chess.uci.Score(score.cp + random.randint(-EVAL_RANDOMNESS, EVAL_RANDOMNESS), None)        
@@ -82,10 +82,10 @@ class Engine:
             ponder = ponder.uci()
         return move, score, ponder
 
-    def evaluate(self, board):
+    def evaluate(self, board, back_engine_depth=BACK_ENGINE_DEPTH):
         """Calculates the value in centipawns of the board
          relative to the side to move"""
-        move, score, ponder = self.evaluateStatic(board)
+        move, score, ponder = self.evaluateStatic(board, back_engine_depth)
         return move, self.cp_score(score), ponder
 
     def candidate_idxs(self, board, try_move=None):
@@ -101,7 +101,7 @@ class Engine:
 
     def candidates(self, board, try_move=None):
         moves, probs = self.candidate_idxs(board, try_move)
-        retval = [CandidateMove(label_strings[move], probs[idx]) for idx, move in enumerate(moves)]
+        retval = [CandidateMove(self, label_strings[move], probs[idx]) for idx, move in enumerate(moves)]
         return retval
 
 
@@ -112,11 +112,11 @@ class Engine:
                 score = MATE_VAL
             else:
                 score = -MATE_VAL
-            return CandidateMove(None, None, score)
+            return CandidateMove(self, None, None, score)
 
         if depth == 0:
             move, score, ponder = self.evaluate(board)
-            return CandidateMove(move, None, score, ponder)
+            return CandidateMove(self, move, None, score, ponder)
         beam_size = BEAM_SIZES[depth]
         candidates = self.candidates(board, try_move)
         move_counter = 0
@@ -139,9 +139,13 @@ class Engine:
             if move_counter >= beam_size:
                 break
 
-        searched_candidates = [c for c in candidates if c.cp_score is not None]
-        max_score = max([c.cp_score for c in searched_candidates])
-        accepted_candidates = [c for c in searched_candidates if c.cp_score > max_score - MAX_BLUNDER]
+        try:
+            searched_candidates = [c for c in candidates if c.cp_score is not None]
+            max_score = max([c.cp_score for c in searched_candidates])
+            accepted_candidates = [c for c in searched_candidates if c.cp_score > max_score - MAX_BLUNDER]
+        except:
+            max_score = -MATE_VAL
+            accepted_candidates = []
         best = None
         best_appeal = -100000
         for candidate in accepted_candidates:
@@ -152,8 +156,11 @@ class Engine:
 
         if best is None:
             logger.error("No candidate found for " + board.fen())
-            return CandidateMove(None, -MATE_VAL)
-        if depth == 2:  
+            self.print_candidate_moves(candidates)
+            move, score, ponder = self.evaluate(board)
+            return CandidateMove(self, move, 0.0, score, ponder)
+        if depth == 2:
+            self.print_candidate_moves(candidates)
             print(best.appeal, best.probability, max_score - best.cp_score)
         return best
 
@@ -161,7 +168,7 @@ class Engine:
     def bestMove(self, board, try_move):
         """Returns the best move in UCI notation, the value of the board after that move, the ponder move and my anticipated nex move (ponderponder)"""
         board = board.copy()
-        static_move, pre_score, static_ponder = self.evaluate(board)
+        static_move, pre_score, static_ponder = self.evaluate(board, BACK_ENGINE_DEPTH + 2)
         move = self.search(board, try_move=try_move)
         logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder))
         return move
@@ -181,10 +188,21 @@ class Engine:
         self.color = self.current_board.turn
 
         move = self.bestMove(board, self.try_move)
-        self.try_move = move.uci
+        self.try_move = move.ponder_ponder
         if move.uci is not None:
             self.current_board.push_uci(move.uci)
         return move
+
+    def print_candidate_moves(self, candidate_moves):
+        try:
+            moves = sorted(candidate_moves, key=lambda c: -c["prob"])
+        except:
+            moves = candidate_moves
+        for move in moves:
+            try:
+                print("Candidate", move.uci, move.probability, move.lost_score, move.appeal)
+            except:
+                print(move)
 
 
 def main():
