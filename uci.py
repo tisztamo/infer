@@ -85,9 +85,9 @@ def handle_uci_input(line):
 
 
 def main():
-    stdin = NonBlockingStreamReader(sys.stdin)
+    #stdin = NonBlockingStreamReader(sys.stdin)
     while True:
-        line = stdin.readline()
+        line = sys.stdin.readline()
         if line != None:
             print(handle_uci_input(line.strip()))
 
