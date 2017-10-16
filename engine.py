@@ -41,7 +41,6 @@ class CandidateMove:
         prob = max(self.probability, 0.0001)
         self.appeal = prob * pow(2.0, float(self.cp_score - best_score) / self.engine.strengthManager.double_prob_accounts_for_cp())
         self.lost_score = best_score - self.cp_score
-        #print("Prob", prob, "Lost_score", best_score - self.cp_score, "Appeal", self.appeal)
         return self.appeal
 
 class Engine:
@@ -125,7 +124,7 @@ class Engine:
             try:
                 board.push_uci(move)
             except:
-                logger.debug("Illegal move: " + str(move))
+                logger.info("Illegal move: " + str(move))
                 continue
 
             ponder_candidate = self.search(board, depth - 1)
@@ -200,7 +199,7 @@ class Engine:
             moves = candidate_moves
         for move in moves:
             try:
-                print("Candidate", move.uci, move.probability, move.lost_score, move.appeal)
+                print("Candidate", move.uci, move.probability, move.cp_score, move.lost_score, move.appeal)
             except:
                 print(move)
 
