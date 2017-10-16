@@ -50,7 +50,7 @@ def parse_position(line):
 
 
 def handle_go(line):
-    time.sleep(random.randint(0, 6))
+    #time.sleep(random.randint(0, 6))
     move = turk.move(board)
     pgn_writer.move(move)
     return "bestmove " + str(move.uci) + " ponder " + str(move.ponder)
