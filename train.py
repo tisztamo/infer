@@ -8,7 +8,7 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-TRANSFER_LEARNING = True
+TRANSFER_LEARNING = False
 
 train_filenames = input.find_files(FLAGS.data_dir, "*train*")
 print("Found", len(train_filenames), "train files.")
@@ -35,7 +35,7 @@ loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, lab
 #model.summary(score_loss)
 
 trained_vars = trainables[-2:] if TRANSFER_LEARNING else trainables
-training_op = tf.train.AdagradOptimizer(0.001).minimize(loss, var_list=trained_vars)
+training_op = tf.train.AdagradOptimizer(0.05).minimize(loss, var_list=trained_vars)
 
 #score_optimizer = tf.train.AdagradOptimizer(0.0001)#.minimize(score_loss)#, var_list=score_trainables
 #score_gradients, score_variables = zip(*score_optimizer.compute_gradients(score_loss))

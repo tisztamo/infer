@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib
@@ -6,7 +7,7 @@ import input
 import model
 
 FLAGS = tf.app.flags.FLAGS
-NUM_BATCHES =100
+NUM_BATCHES =2001
 
 validation_filenames = input.find_files(FLAGS.data_dir, "*validat*")
 print("Found", len(validation_filenames), "validation files.")
@@ -18,7 +19,7 @@ def accuracy(predictions, labels):
 
 #with tf.device('/cpu:0'):
 validationfilenames = tf.placeholder(tf.string, shape=[None])
-validationset = input.inputs(validation_filenames)
+validationset = input.inputs(validation_filenames, shuffle=False)
 
 iterator = tf.contrib.data.Iterator.from_structure(validationset.output_types,
                                 validationset.output_shapes)
@@ -40,14 +41,13 @@ with tf.Session() as sess:
         saver.restore(sess, checkpoint.model_checkpoint_path)
         print ("Successfully loaded:", checkpoint.model_checkpoint_path)
         mean_pred_acc = 0
+        sess.run(validation_init_op, feed_dict={validationfilenames: validation_filenames})
         for i in range(NUM_BATCHES):
-            sess.run(validation_init_op, feed_dict={validationfilenames: validation_filenames})
             v_prediction, v_labels, v_cp_scores = sess.run([prediction, labels, cp_scores])
             pred_acc = accuracy(v_prediction, v_labels)
             mean_pred_acc += pred_acc
-            print('Accuracy after batch #%d: %.1f%%' % (i, mean_pred_acc / (i+1)))
+            print('Accuracy after batch #%d: %.1f%%' % (i, mean_pred_acc / (i+1)), end="\r")
         mean_pred_acc = mean_pred_acc / NUM_BATCHES
-        print("-----")
-        print("Model accuracy: %.1f%%" % mean_pred_acc)
+        print()
     else:
         print("No checkpoint found in logdir", FLAGS.logdir)

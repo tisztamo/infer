@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('disable_cp', 'false',
                            'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):
@@ -61,22 +61,24 @@ def load_labels():
 def _parse_example(example_proto):
     features = {
         "board/sixlayer": tf.FixedLenFeature([384], tf.float32),
-        #"move/halfmove_clock_before": tf.FixedLenFeature((), tf.int64),
         "move/turn": tf.FixedLenFeature((), tf.int64),
         "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64)
     }
     if FLAGS.disable_cp == "false":
-        features["board/cp_score"] = tf.FixedLenFeature((), tf.int64)
+        features["board/cp_score/"] = tf.FixedLenFeature((), tf.int64)
 
     parsed_features = tf.parse_single_example(example_proto, features)
-    cp_score = parsed_features["board/cp_score"] if FLAGS.disable_cp == "false" else 0
+    cp_score = parsed_features["board/cp_score/"] if FLAGS.disable_cp == "false" else 0
     cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/turn"]), parsed_features["move/label"], cp_score
+    return (board, parsed_features["move/turn"], 1), parsed_features["move/label"], cp_score
 
-def inputs(filenames):
+def inputs(filenames, shuffle=True):
     dataset = tf.contrib.data.TFRecordDataset(filenames)
-    dataset = dataset.map(_parse_example).shuffle(buffer_size=10000).batch(BATCH_SIZE).repeat()
+    dataset = dataset.map(_parse_example)
+    if shuffle:
+        dataset = dataset.shuffle(buffer_size=10000)
+    dataset = dataset.batch(BATCH_SIZE).repeat()
     return dataset

@@ -10,7 +10,7 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 11
+BACK_ENGINE_DEPTH = 6
 BEAM_SIZES = [0, 10, 12]
 MAX_BLUNDER = 500
 EVAL_RANDOMNESS = 10
@@ -88,7 +88,7 @@ class Engine:
         return move, self.cp_score(score), ponder
 
     def candidate_idxs(self, board, try_move=None):
-        predictions = inference.predict(board.fen())
+        predictions = inference.predict(board.fen(), "Anand, Viswanathan")
         candidates = np.argpartition(predictions, -20)[-20:]
         candidates = candidates[np.argsort(-predictions[candidates])]
         if try_move is not None:
