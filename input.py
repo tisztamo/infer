@@ -10,7 +10,7 @@ tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
 tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
                            'Directory to store network parameters and training logs')
-tf.app.flags.DEFINE_string('disable_cp', 'false',
+tf.app.flags.DEFINE_string('disable_cp', 'true',
                            'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
@@ -73,7 +73,7 @@ def _parse_example(example_proto):
     cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/turn"], 1), parsed_features["move/label"], cp_score
+    return (board, parsed_features["move/turn"], parsed_features["move/player"]), parsed_features["move/label"], cp_score
 
 def inputs(filenames, shuffle=True):
     dataset = tf.contrib.data.TFRecordDataset(filenames)

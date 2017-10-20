@@ -8,14 +8,27 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 NUM_BATCHES =2001
+TOP_MAX = 5
 
-validation_filenames = input.find_files(FLAGS.data_dir, "*validat*")
+label_strings = input.load_labels()
+
+validation_filenames = input.find_files(FLAGS.data_dir, "*va*")
 print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 
 def accuracy(predictions, labels):
-    return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))
-          / predictions.shape[0])
+    retval = np.array([0.0] * TOP_MAX)
+    for k in range(1, TOP_MAX + 1):
+        top_k_preds = np.take(np.argpartition(predictions, -k), range(-k, 0), 1)
+        valid_labels = np.argmax(labels, 1)
+        good_pred_count = 0
+        for i in range(top_k_preds.shape[0]):
+            found = np.nonzero(top_k_preds[i] == valid_labels[i])
+            if len(found[0]) > 0:
+                good_pred_count += 1
+        retval[k - 1] = (100.0 * good_pred_count
+            / predictions.shape[0])
+    return retval
 
 #with tf.device('/cpu:0'):
 validationfilenames = tf.placeholder(tf.string, shape=[None])
@@ -40,14 +53,14 @@ with tf.Session() as sess:
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
         print ("Successfully loaded:", checkpoint.model_checkpoint_path)
-        mean_pred_acc = 0
+        sum_pred_acc = [0] * TOP_MAX
         sess.run(validation_init_op, feed_dict={validationfilenames: validation_filenames})
         for i in range(NUM_BATCHES):
             v_prediction, v_labels, v_cp_scores = sess.run([prediction, labels, cp_scores])
             pred_acc = accuracy(v_prediction, v_labels)
-            mean_pred_acc += pred_acc
-            print('Accuracy after batch #%d: %.1f%%' % (i, mean_pred_acc / (i+1)), end="\r")
-        mean_pred_acc = mean_pred_acc / NUM_BATCHES
+            sum_pred_acc = np.add(sum_pred_acc, pred_acc)
+            mean_pred_acc = np.divide(sum_pred_acc, float(i + 1))
+            print("Top-k (k=1.." + str(TOP_MAX) + ") accuracy after batch #" + str(i) + ":", mean_pred_acc, end="\r")
         print()
     else:
         print("No checkpoint found in logdir", FLAGS.logdir)

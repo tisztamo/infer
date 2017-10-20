@@ -68,11 +68,9 @@ def model(data, feature_tensor=None, trainables = []):
     cc = tf.cast([data[1]], tf.float32)
     cc = tf.transpose(cc)
 
-    cc2 = tf.cast([data[2]], tf.float32)
-    cc2 = tf.transpose(cc2)
-    h_extra = tf.concat([feature_tensor, cc, cc2], axis=1)
+    h_extra = tf.concat([feature_tensor, cc], axis=1)
 
-    W_fc1 = weight_variable([1024 * 64 + 2, HIDDEN])
+    W_fc1 = weight_variable([1024 * 64 + 1, HIDDEN])
     trainables.append(W_fc1)
     b_fc1 = bias_variable([HIDDEN])
     trainables.append(b_fc1)

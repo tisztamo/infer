@@ -10,10 +10,10 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 6
-BEAM_SIZES = [0, 10, 12]
-MAX_BLUNDER = 500
-EVAL_RANDOMNESS = 10
+BACK_ENGINE_DEPTH = 16
+BEAM_SIZES = [0, 4]
+MAX_BLUNDER = 300
+EVAL_RANDOMNESS = 0
 STALEMATE_SCORE = -20
 
 label_strings = input.load_labels()
@@ -88,7 +88,7 @@ class Engine:
         return move, self.cp_score(score), ponder
 
     def candidate_idxs(self, board, try_move=None):
-        predictions = inference.predict(board.fen(), "Anand, Viswanathan")
+        predictions = inference.predict(board.fen(), "Karpov, Anatoly")
         candidates = np.argpartition(predictions, -20)[-20:]
         candidates = candidates[np.argsort(-predictions[candidates])]
         if try_move is not None:
@@ -104,7 +104,7 @@ class Engine:
         return retval
 
 
-    def search(self, board, depth=2, try_move=None):
+    def search(self, board, depth=1, try_move=None):
         STALEMATE = -100000 #Smaller than the smallest possible score
         if board.is_checkmate():
             if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
@@ -124,7 +124,7 @@ class Engine:
             try:
                 board.push_uci(move)
             except:
-                logger.info("Illegal move: " + str(move))
+                #logger.debug("Illegal move: " + str(move))
                 continue
 
             ponder_candidate = self.search(board, depth - 1)
@@ -155,11 +155,11 @@ class Engine:
 
         if best is None:
             logger.error("No candidate found for " + board.fen())
-            self.print_candidate_moves(candidates)
+            #self.print_candidate_moves(candidates)
             move, score, ponder = self.evaluate(board)
             return CandidateMove(self, move, 0.0, score, ponder)
-        if depth == 2:
-            self.print_candidate_moves(candidates)
+        if depth == 1:
+            #self.print_candidate_moves(candidates)
             print(best.appeal, best.probability, max_score - best.cp_score)
         return best
 

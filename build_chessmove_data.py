@@ -22,7 +22,7 @@ tf.app.flags.DEFINE_string('validation_dir', '../data/validation/',
                            'Validation data directory')
 tf.app.flags.DEFINE_string('output_dir', '../data/',
                            'Output data directory')
-tf.app.flags.DEFINE_string('eval_depth', '12',
+tf.app.flags.DEFINE_string('eval_depth', '1',
                            'Depth to eval position using the external engine')
 tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
                            'UCI engine executable')
@@ -284,7 +284,7 @@ def main(unused_argv):
 
     engines = init_engines(7)
 
-    #_process_dataset('validation', FLAGS.validation_dir)
+    _process_dataset('validation', FLAGS.validation_dir, engines)
     _process_dataset('train', FLAGS.train_dir, engines)
 
 if __name__ == '__main__':

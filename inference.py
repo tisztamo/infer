@@ -33,8 +33,8 @@ def predict(fen, player_="?"):
     board_ = chess.Board(fen)
     encoded_board = input.encode_board(board_)
     encoded_board = [np.transpose(encoded_board, (1, 2, 0))]
-    turn_ = 1 if board_.turn == chess.WHITE else 0
-    player_hash = input.hash_32(player_)
+    turn_ = 1.0 if board_.turn == chess.WHITE else 0.0
+    player_hash = 0.1#float(input.hash_32(player_))
     feed_dict = {board: encoded_board, turn: [turn_], player: [player_hash]}
     predictions = sess.run([logits], feed_dict=feed_dict)
     legal_moves = []
@@ -50,9 +50,13 @@ def main():
     preds=predict("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Anand, Viswanathan")#"Karpov, Anatoly")
     #preds = predict("r4r1R/pb2bkp1/4p3/3p1p1q/1ppPnB2/2P1P3/PPQ2PP1/2K4R w - - 0 22", "Karpov, Anatoly")
     #preds = predict("r3k2r/p7/Bp2p3/2pqPnpp/3p4/P7/1PP2PPP/R2QR1K1 w kq - 2 19", "Karpov, Anatoly")
-    for idx in range(len(label_strings)):
-        if preds[idx] != 0:
-            print(label_strings[idx], preds[idx])
+    argmax = np.argmax(preds, 0)
+    print("Best: " + label_strings[argmax] + " " + str(preds[argmax]))
+    candidates = np.argpartition(preds, -20)[-20:]
+    candidates = candidates[np.argsort(-preds[candidates])]
+
+    for idx in range(len(candidates)):
+        print(label_strings[candidates[idx]], preds[candidates[idx]])
 
 if __name__ == "__main__":
     main()
