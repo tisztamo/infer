@@ -59,8 +59,8 @@ def process_file(pgn_file_name, engine, player_name=None):
             ply_count, correct_pred_count = analyse_game(game, engine, player_color_mask)
             total_correct_pred_count += correct_pred_count
             total_ply_count += ply_count
-            print(game.headers["White"] + " vs " + game.headers["Black"] + ": %.2f percent, "  % (float(correct_pred_count) / float(ply_count) * 100.0) + str(correct_pred_count) + " / " + str(ply_count))
-    print("Prediction accuracy: %.2f precent (%d from %d)" % (float(total_correct_pred_count) / float(total_ply_count) * 100.0, total_correct_pred_count, total_ply_count))
+            print(game.headers["White"] + " vs " + game.headers["Black"] + ": %.2f%%, "  % (float(correct_pred_count) / float(ply_count) * 100.0) + str(correct_pred_count) + " / " + str(ply_count))
+    print("Prediction accuracy: %.2f%% (%d from %d)" % (float(total_correct_pred_count) / float(total_ply_count) * 100.0, total_correct_pred_count, total_ply_count))
     return total_correct_pred_count, total_ply_count           
 
 if __name__ == "__main__":

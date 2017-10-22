@@ -1,0 +1,109 @@
+[Event "St. Louis Rapid & Blitz (Blitz)"]
+[Site "St Louis, MO USA"]
+[Date "2017.08.18"]
+[EventDate "2017.08.13"]
+[Round "12"]
+[Result "0-1"]
+[White "Fabiano Caruana"]
+[Black "Garry Kasparov"]
+[ECO "A07"]
+[WhiteElo "2807"]
+[BlackElo "2812"]
+[PlyCount "130"]
+
+1. e4 c5 2. Nc3 d6 3. Nge2 Nf6 4. g3 g6 5. Bg2 Nc6 6. d3 Bg7
+7. O-O O-O 8. a3 Rb8 9. Rb1 b6 10. b4 Bb7 11. h3 Nd7 12. Be3
+Re8 13. Qd2 Ba8 14. f4 Rc8 15. g4 e6 16. f5 Nd4 17. Bxd4 cxd4
+18. Nb5 exf5 19. gxf5 Ne5 20. Nbxd4 d5 21. Qf4 dxe4 22. dxe4
+Qc7 23. f6 Bf8 24. Rb3 Nc4 25. Rc3 a6 26. Qxc7 Rxc7 27. Nf4 b5
+28. Nd5 Rcc8 29. Rd3 Bd6 30. Nb3 Bxd5 31. exd5 Re5 32. Nc5 a5
+33. Rfd1 a4 34. Rf1 Rce8 35. Rdf3 h5 36. Nd3 Re2 37. R3f2 R2e3
+38. Rf3 Re2 39. R1f2 Kh7 40. Bf1 R2e4 41. Nc5 Re1 42. Kg2 Ne3+
+43. Kh1 Nxd5 44. Rd3 R8e5 45. Nd7 Rg5 46. Rff3 Bc7 47. Nc5 h4
+48. Rd4 Bg3 49. Nd3 Ra1 50. Re4 Rxa3 51. Re7 Kg8 52. Re8+ Kh7
+53. Rf8 Ra1 54. Rxf7+ Kg8 55. Rg7+ Kf8 56. Ra7 Rf5 57. Rxf5
+gxf5 58. Kg2 Ne3+ 59. Kf3 Nxf1 60. Nc5 Re1 61. Kg2 Ne3+
+62. Kf3 Nc4 63. Ra6 Nd2+ 64. Kg2 Re2+ 65. Kh1 Rh2+ 0-1[Event "St. Louis Rapid & Blitz (Blitz)"]
+
+[Site "St Louis, MO USA"]
+[Date "2017.08.18"]
+[EventDate "2017.08.13"]
+[Round "10"]
+[Result "1-0"]
+[White "Sergey Karjakin"]
+[Black "Garry Kasparov"]
+[ECO "A01"]
+[WhiteElo "2773"]
+[BlackElo "2812"]
+[PlyCount "75"]
+
+1. b3 e5 2. Bb2 Nc6 3. e3 g6 4. c4 Bg7 5. Nf3 d6 6. Be2 Nf6
+7. d4 O-O 8. O-O exd4 9. Nxd4 Re8 10. Nxc6 bxc6 11. Bf3 Bd7
+12. Nc3 Rb8 13. h3 c5 14. Qd2 h5 15. Rad1 Qe7 16. Rfe1 a6
+17. Qc1 Be6 18. Ne2 Nd7 19. Bxg7 Kxg7 20. Nf4 Ne5 21. Be2 Qf6
+22. Bxh5 Rh8 23. Be2 g5 24. Nxe6+ fxe6 25. f4 gxf4 26. exf4
+Nc6 27. Rd3 Nd4 28. Rg3+ Kf7 29. Bd3 Rbg8 30. Rg5 e5 31. Rf1
+Ke7 32. Qe3 Kd7 33. Rxg8 Rxg8 34. fxe5 Qxe5 35. Rf7+ Ke6
+36. Qf2 Qg5 37. Rxc7 Qc1+ 38. Kh2 1-0[Event "St. Louis Rapid & Blitz (Blitz)"]
+
+[Site "St Louis, MO USA"]
+[Date "2017.08.18"]
+[EventDate "2017.08.13"]
+[Round "13"]
+[Result "1-0"]
+[White "Garry Kasparov"]
+[Black "Hikaru Nakamura"]
+[ECO "E32"]
+[WhiteElo "2812"]
+[BlackElo "2792"]
+[PlyCount "87"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qc2 O-O 5. a3 Bxc3+ 6. Qxc3
+d5 7. Nf3 dxc4 8. Qxc4 b6 9. h4 c5 10. dxc5 bxc5 11. h5 h6
+12. g4 Qd5 13. Qxd5 Nxd5 14. g5 hxg5 15. Bxg5 f6 16. Bd2 Nc6
+17. Rc1 Nd4 18. Rxc5 Nxf3+ 19. exf3 Bd7 20. Rh4 Rfb8 21. b4 a6
+22. Rd4 Bb5 23. Bg2 Re8 24. f4 f5 25. Bf3 Kh7 26. Bc3 Re7
+27. Kd2 Rd8 28. Bxd5 exd5 29. Rdxd5 Rxd5+ 30. Rxd5 Rd7
+31. Rxd7 Bxd7 32. Ke3 g6 33. h6 Kxh6 34. Kd4 Kh5 35. Kc5 Kg4
+36. Bd2 Kf3 37. Kb6 Bb5 38. a4 Bf1 39. b5 axb5 40. axb5 Kxf2
+41. Kc6 Ke2 42. Bc1 Kd1 43. Ba3 Kd2 44. Be7 1-0[Event "St. Louis Rapid & Blitz (Blitz)"]
+
+[Site "St Louis, MO USA"]
+[Date "2017.08.18"]
+[EventDate "2017.08.13"]
+[Round "18"]
+[Result "1/2-1/2"]
+[White "Garry Kasparov"]
+[Black "David Navara"]
+[ECO "E32"]
+[WhiteElo "2812"]
+[BlackElo "2737"]
+[PlyCount "78"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. Qc2 O-O 5. a3 Bxc3+ 6. Qxc3
+d6 7. Bg5 Nbd7 8. Nf3 b6 9. e3 Bb7 10. Nd2 Rc8 11. Bd3 c5
+12. O-O h6 13. Bh4 cxd4 14. exd4 d5 15. b3 Qc7 16. Rfe1 Nh5
+17. f3 Rfe8 18. Rac1 dxc4 19. bxc4 e5 20. Bf5 exd4 21. Qxd4
+Bc6 22. Ne4 Qf4 23. Bxd7 Bxd7 24. Bg3 Nxg3 25. hxg3 Qc7
+26. Nd6 Rxe1+ 27. Rxe1 Qc5 28. Qxc5 Rxc5 29. Re7 Be6 30. Rxa7
+Rc6 31. Ne4 Bxc4 32. g4 Be6 33. Kf2 Kh7 34. a4 Rc2+ 35. Kg3
+Ra2 36. Nd6 Bb3 37. Ra6 Rxa4 38. Rxb6 Be6 39. Ne4 Ra7 1/2-1/2[Event "St. Louis Rapid & Blitz (Blitz)"]
+
+[Site "St Louis, MO USA"]
+[Date "2017.08.18"]
+[EventDate "2017.08.13"]
+[Round "11"]
+[Result "1/2-1/2"]
+[White "Garry Kasparov"]
+[Black "Ian Nepomniachtchi"]
+[ECO "B51"]
+[WhiteElo "2812"]
+[BlackElo "2751"]
+[PlyCount "53"]
+
+1. e4 c5 2. Nf3 d6 3. Bb5+ Nd7 4. d4 cxd4 5. Qxd4 Ngf6 6. Nc3
+e5 7. Qd3 h6 8. Be3 a6 9. Bc4 Be7 10. a4 Qc7 11. O-O O-O
+12. Nd2 Nb6 13. Bxb6 Qxb6 14. a5 Qc7 15. Nd5 Nxd5 16. Bxd5 Be6
+17. Nc4 Kh8 18. c3 Rad8 19. Rfd1 Bg5 20. Nb6 Bg4 21. f3 Be6
+22. g3 h5 23. h4 Bh6 24. Nc4 Bc8 25. Nb6 Be6 26. Nc4 Bc8
+27. Nb6 1/2-1/2

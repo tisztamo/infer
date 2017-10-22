@@ -37,7 +37,10 @@ def parse_position(line):
     if words[1] == "startpos":
         board = chess.Board()
         for move in words[3:]:
-            board.push_uci(move)
+            try:
+                board.push_uci(move)
+            except Exception as e:
+                logger.error(e)
     elif words[1] == "fen":
         fen = " ".join(words[2:]).replace(" -1 ", " - ")
         board = chess.Board(fen)

@@ -8,10 +8,10 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.1
-TRANSFER_LEARNING = False
+START_LEARNING_RATE = 0.003
+TRANSFER_LEARNING = True
 
-train_filenames = input.find_files(FLAGS.data_dir, "*train*")
+train_filenames = input.find_files(FLAGS.data_dir, "*tra*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -32,7 +32,7 @@ loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, lab
 
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           20000, 0.96, staircase=True)
+                                           3000, 1.0, staircase=True)
 trained_vars = trainables[-6:] if TRANSFER_LEARNING else trainables
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step, var_list=trained_vars)
 

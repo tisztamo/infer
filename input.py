@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('disable_cp', 'true',
                            'Do not load of cp_score field from the tfrecord data files')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):
@@ -80,5 +80,5 @@ def inputs(filenames, shuffle=True):
     dataset = dataset.map(_parse_example)
     if shuffle:
         dataset = dataset.shuffle(buffer_size=10000)
-    dataset = dataset.batch(BATCH_SIZE).repeat()
+    dataset = dataset.batch(BATCH_SIZE)#.repeat()
     return dataset
