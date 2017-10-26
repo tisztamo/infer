@@ -31,6 +31,7 @@ with tf.device('/cpu:0'):
 def predict(fen, player_="?"):
     global logits, prediction, sess, label_strings, board
     board_ = chess.Board(fen)
+    #print(board_)
     encoded_board = input.encode_board(board_)
     encoded_board = [np.transpose(encoded_board, (1, 2, 0))]
     turn_ = 1.0 if board_.turn == chess.WHITE else 0.0
@@ -47,7 +48,10 @@ label_strings = input.load_labels()
 
 
 def main():
-    preds=predict("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Anand, Viswanathan")#"Karpov, Anatoly")
+    for i in range(20):
+        preds=predict("r1bq1rk1/pppn1ppp/3ppn2/6B1/2PP4/P1Q2N2/1P2PPPP/R3KB1R b KQ - 3 8")
+        argmax = np.argmax(preds, 0)
+        print("Best: " + label_strings[argmax] + " " + str(preds[argmax]))
     #preds = predict("r4r1R/pb2bkp1/4p3/3p1p1q/1ppPnB2/2P1P3/PPQ2PP1/2K4R w - - 0 22", "Karpov, Anatoly")
     #preds = predict("r3k2r/p7/Bp2p3/2pqPnpp/3p4/P7/1PP2PPP/R2QR1K1 w kq - 2 19", "Karpov, Anatoly")
     argmax = np.argmax(preds, 0)

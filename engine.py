@@ -6,13 +6,14 @@ import input, inference, strength
 
 logger = log.getLogger("engine")
 
+PLAY_FIRST_INTUITION = True
 ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 17
-BEAM_SIZES = [0, 8]
-MAX_BLUNDER = 300
+BACK_ENGINE_DEPTH = 16
+BEAM_SIZES = [0, 12]
+MAX_BLUNDER = 150
 EVAL_RANDOMNESS = 0
 STALEMATE_SCORE = -20
 
@@ -189,7 +190,12 @@ class Engine:
 
         self.color = self.current_board.turn
 
-        move = self.bestMove(board, self.try_move)
+        if PLAY_FIRST_INTUITION:
+            candidates = self.candidates(board)
+            self.print_candidate_moves(candidates)
+            move = candidates[0]
+        else:
+            move = self.bestMove(board, self.try_move)
         self.try_move = move.ponder_ponder
         if move.uci is not None:
             self.current_board.push_uci(move.uci)

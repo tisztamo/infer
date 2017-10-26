@@ -40,9 +40,10 @@ def analyse_game(game, engine, player_color_mask):
         if turn_to_colormask(board.turn) & player_color_mask != 0:
             ply_count += 1
             engine.position(chess.Board(board.fen()))#Previous moves will not be sent!
-            engine_move, _ = engine.go(depth=18)
+            engine_move, _ = engine.go(depth=20)
             if engine_move.uci() == move.uci():
                 correct_pred_count += 1
+            csv_out.write(board.fen() + "," + move.uci() + "," + engine_move.uci() + "\n")
             print(str(correct_pred_count) + "/" + str(ply_count), end="\r")
         board.push(move)
     return ply_count, correct_pred_count
@@ -70,7 +71,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 3:
         player = sys.argv[3]
     print("Engine exe: " + engine_exe + " pgn_file: " + pgn_file + " player: " + str(player))
+    csv_out = open("prediction.csv", "w")
     engine = chess.uci.popen_engine(engine_exe)
     engine.uci()
     process_file(pgn_file, engine, player)
     engine.quit()
+    csv_out.close()

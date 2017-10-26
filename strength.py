@@ -10,7 +10,7 @@ class StrengthManager:
     def double_prob_accounts_for_cp(self, board=None):
         if board is None:
             board = self.engine.current_board
-        return 150 * (1 - self.game_stage(board))
+        return 250 * (1 - self.game_stage(board))
 
     def game_stage(self, board=None):
         if board is None:
