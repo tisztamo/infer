@@ -12,7 +12,7 @@ TOP_MAX = 5
 
 label_strings = input.load_labels()
 
-validation_filenames = input.find_files(FLAGS.data_dir, "*va*")
+validation_filenames = input.find_files(FLAGS.data_dir, "*valida*")
 print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 

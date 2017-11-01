@@ -9,7 +9,7 @@ import model
 FLAGS = tf.app.flags.FLAGS
 
 TRANSFER_LEARNING = False
-START_LEARNING_RATE = 0.02 if not TRANSFER_LEARNING else 0.0002
+START_LEARNING_RATE = 0.0001 if not TRANSFER_LEARNING else 0.0001
 
 train_filenames = input.find_files(FLAGS.data_dir, "kasparov-tr")
 print("Found", len(train_filenames), "train files.")
@@ -26,14 +26,14 @@ training_init_op = iterator.make_initializer(dataset)
 examples, labels, cp_scores = iterator.get_next()
 
 features, trainables = model.feature_extractor(examples)
-logits, trainables = model.model(examples, features, trainables, dropout=0.2)
+logits, trainables = model.model(examples, features, trainables, dropout=0.4)
 labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
 
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           3000, 0.99, staircase=True)
-trained_vars = trainables[-6:] if TRANSFER_LEARNING else trainables
+                                           1900, 1.0, staircase=True)
+trained_vars = trainables[-6:-4] if TRANSFER_LEARNING else trainables
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step, var_list=trained_vars)
 
 saveables = list(trainables)

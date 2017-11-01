@@ -40,7 +40,7 @@ def analyse_game(game, engine, player_color_mask):
         if turn_to_colormask(board.turn) & player_color_mask != 0:
             ply_count += 1
             engine.position(chess.Board(board.fen()))#Previous moves will not be sent!
-            engine_move, _ = engine.go(depth=20)
+            engine_move, _ = engine.go(depth=16)
             if engine_move.uci() == move.uci():
                 correct_pred_count += 1
             csv_out.write(board.fen() + "," + move.uci() + "," + engine_move.uci() + "\n")
