@@ -31,66 +31,52 @@ def bias_variable(shape):
 def conv2d(x, W, stride):
     return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding="SAME")
 
+
+def conv_layer(input, width, height, filter_num, trainables=[]):
+    num_input_filters = int(input.shape[3])
+    w = weight_variable([width, height, num_input_filters, filter_num])
+    trainables.append(w)
+    b = bias_variable([filter_num])
+    trainables.append(b)
+    h = tf.nn.relu(conv2d(input, w, 1) + b)
+    return h
+
+
+def extractor_layer(input, num_1x1=0, num_3x3=0, num_5x5=0, num_7x7=0, trainables=[]):
+    num_input_filters = int(input.shape[3])
+    print("Creating extractor layer for ", num_input_filters, "inputs.")
+    extractors = []
+
+    if num_1x1 > 0:
+        h_1x1 = conv_layer(input, 1, 1, num_1x1, trainables)
+        extractors.append(h_1x1)
+
+    h_3x3 = None
+    if num_3x3 > 0:
+        h_3x3 = conv_layer(input, 3, 3, num_3x3, trainables)
+        extractors.append(h_3x3)
+
+    h_5x5 = None
+    if num_5x5 > 0:
+        h_5x5 = conv_layer(input, 5, 5, num_5x5, trainables)
+        extractors.append(h_5x5)
+
+    h_7x7 = None
+    if num_7x7 > 0:
+        h_7x7 = conv_layer(input, 7, 7, num_7x7, trainables)
+        extractors.append(h_7x7)
+
+    return tf.concat(extractors, 3)
+    
 def feature_extractor(data):
     trainables = []
-    W_conv1 = weight_variable([3, 3, FEATURE_PLANES, 512])
-    trainables.append(W_conv1)
-    b_conv1 = bias_variable([512])
-    trainables.append(b_conv1)
-    h_conv1 = tf.nn.relu(conv2d(data[0], W_conv1, 1) + b_conv1)
 
-    W_conv1_2 = weight_variable([5, 5, FEATURE_PLANES, 256])
-    trainables.append(W_conv1_2)
-    b_conv1_2 = bias_variable([256])
-    trainables.append(b_conv1_2)
-    h_conv1_2 = tf.nn.relu(conv2d(data[0], W_conv1_2, 1) + b_conv1_2)
+    h_conv1 = extractor_layer(data[0], 32, 256, 256, 256, trainables)
+    h_conv2 = extractor_layer(h_conv1, 32, 256, 256, 256, trainables)
+    h_conv3 = extractor_layer(h_conv2, 32, 512, 256, 0, trainables)
+    h_conv4 = extractor_layer(h_conv3, 32, 768, 512, 256, trainables)
 
-    h_conv1_full = tf.concat([h_conv1, h_conv1_2], 3)
-
-    # W_conv1p = weight_variable([1, 1, 512, 256])
-    # trainables.append(W_conv1p)
-    # b_conv1p = bias_variable([256])
-    # trainables.append(b_conv1p)
-    # h_conv1p = tf.nn.relu(conv2d(h_conv1, W_conv1p, 1) + b_conv1p)
-
-    W_conv2 = weight_variable([3, 3, 768, 768])
-    trainables.append(W_conv2)
-    b_conv2 = bias_variable([768])
-    trainables.append(b_conv2)
-    h_conv2 = tf.nn.relu(conv2d(h_conv1_full, W_conv2, 1) + b_conv2)
-
-    # W_conv2p = weight_variable([1, 1, 512, 256])
-    # trainables.append(W_conv2p)
-    # b_conv2p = bias_variable([256])
-    # trainables.append(b_conv2p)
-    # h_conv2p = tf.nn.relu(conv2d(h_conv2, W_conv2p, 1) + b_conv2p)
-
-    W_conv3 = weight_variable([3, 3, 768, 1024])
-    trainables.append(W_conv3)
-    b_conv3 = bias_variable([1024])
-    trainables.append(b_conv3)
-    h_conv3 = tf.nn.relu(conv2d(h_conv2, W_conv3, 1) + b_conv3)
-
-    # W_conv3p = weight_variable([1, 1, 512, 256])
-    # trainables.append(W_conv3p)
-    # b_conv3p = bias_variable([256])
-    # trainables.append(b_conv3p)
-    # h_conv3p = tf.nn.relu(conv2d(h_conv3, W_conv3p, 1) + b_conv3p)
-
-    W_conv4 = weight_variable([3, 3, 1024, 1280])
-    trainables.append(W_conv4)
-    b_conv4 = bias_variable([1280])
-    trainables.append(b_conv4)
-    h_conv4 = tf.nn.relu(conv2d(h_conv3, W_conv4, 1) + b_conv4)
-
-
-    W_conv5 = weight_variable([3, 3, 1280, 1536])
-    trainables.append(W_conv5)
-    b_conv5 = bias_variable([1536])
-    trainables.append(b_conv5)
-    h_conv5 = tf.nn.relu(conv2d(h_conv4, W_conv5, 1) + b_conv5)
-
-    h_flat = tf.reshape(h_conv5, [-1, 1536 * 64])
+    h_flat = tf.reshape(h_conv4, [-1, 1568 * 64])
 
     return h_flat, trainables
 
@@ -110,7 +96,7 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
 
     h_extra = tf.concat([feature_tensor, cc], axis=1)
 
-    W_fc1 = weight_variable([1536 * 64 + 1, HIDDEN])
+    W_fc1 = weight_variable([1568 * 64 + 1, HIDDEN])
     trainables.append(W_fc1)
     b_fc1 = bias_variable([HIDDEN])
     trainables.append(b_fc1)
@@ -120,6 +106,19 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
         h_dropout1 = tf.nn.dropout(h_fc1, 1.0 - dropout)
     else:
         h_dropout1  = h_fc1
+
+
+    #Not working, fails to learn
+    # W_bottleneck = weight_variable([HIDDEN, 500])
+    # trainables.append(W_bottleneck)
+    # b_bottleneck = bias_variable([500])
+    # trainables.append(b_bottleneck)
+    # h_bottleneck = tf.nn.relu(tf.matmul(h_dropout1, W_bottleneck) + b_bottleneck)
+    # if dropout >= 0.0:
+    #     h_dropout_bottleneck = tf.nn.dropout(h_bottleneck, 1.0 - dropout)
+    # else:
+    #     h_dropout_bottleneck  = h_bottleneck
+
 
     W_fc2 = weight_variable([HIDDEN, HIDDEN])
     trainables.append(W_fc2)
