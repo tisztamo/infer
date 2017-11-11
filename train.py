@@ -11,7 +11,7 @@ FLAGS = tf.app.flags.FLAGS
 TRANSFER_LEARNING = False
 START_LEARNING_RATE = 0.1 if not TRANSFER_LEARNING else 0.0002
 
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-*2400*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-*2400*onecolor")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -32,7 +32,7 @@ loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, lab
 
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           1000, 0.98, staircase=False)
+                                           1500, 0.99, staircase=False)
 trained_vars = trainables[-6:] if TRANSFER_LEARNING else trainables
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step, var_list=trained_vars)
 

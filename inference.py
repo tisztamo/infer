@@ -34,7 +34,7 @@ def predict(fen, player_="?"):
     #print(board_)
     encoded_board = input.encode_board(board_)
     encoded_board = [np.transpose(encoded_board, (1, 2, 0))]
-    turn_ = 1.0 if board_.turn == chess.WHITE else 0.0
+    turn_ = 1.0# if board_.turn == chess.WHITE else 0.0
     player_hash = 0.1#float(input.hash_32(player_))
     feed_dict = {board: encoded_board, turn: [turn_], player: [player_hash]}
     predictions = sess.run([logits], feed_dict=feed_dict)
@@ -42,14 +42,16 @@ def predict(fen, player_="?"):
     for move in board_.legal_moves:
         legal_moves.append(move.uci())
     legal_labels = [int(mov in legal_moves) for mov in label_strings]
-    return (predictions[0] * legal_labels)[0]
+    preds = predictions[0] if board_.turn == chess.WHITE else np.array([predictions[0][0][switch_indexer]])
+    retval = (preds * legal_labels)[0]
+    return retval
 
-label_strings = input.load_labels()
+label_strings, switch_indexer = input.load_labels()
 
 
 def main():
-    for i in range(20):
-        preds=predict("r1bq1rk1/pppn1ppp/3ppn2/6B1/2PP4/P1Q2N2/1P2PPPP/R3KB1R b KQ - 3 8")
+    for i in range(1):
+        preds=predict("rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
         argmax = np.argmax(preds, 0)
         print("Best: " + label_strings[argmax] + " " + str(preds[argmax]))
     #preds = predict("r4r1R/pb2bkp1/4p3/3p1p1q/1ppPnB2/2P1P3/PPQ2PP1/2K4R w - - 0 22", "Karpov, Anatoly")

@@ -6,7 +6,7 @@ import input
 
 FLAGS = tf.app.flags.FLAGS
 
-label_strings = input.load_labels()
+label_strings, _ = input.load_labels()
 
 with tf.device('/cpu:0'):
     board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])

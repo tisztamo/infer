@@ -10,7 +10,7 @@ tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
 tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
                            'Directory to store network parameters and training logs')
-tf.app.flags.DEFINE_string('disable_cp', 'true',
+tf.app.flags.DEFINE_string('disable_cp', 'false',
                            'Do not load of cp_score field from the tfrecord data files')
 tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
@@ -51,6 +51,11 @@ def encode_board(board):
                 rep[4, col, row] = 1 if occupied_white & mask else -1
             elif kings & mask:
                 rep[5, col, row] = 1 if occupied_white & mask else -1
+
+    if board.turn == chess.BLACK:
+        rep = np.where(rep == 0.0, 0.0, -rep)
+        rep = np.flip(rep, 2)
+
     return rep
 
 
@@ -90,9 +95,22 @@ def decode_board(encoded_board):
 def hash_32(str):
     return zlib.adler32(str)
 
+def sideswitch_label(label_str):
+    retval = list(label_str)
+    retval[1] = str(9 - int(retval[1]))
+    retval[3] = str(9 - int(retval[3]))
+    return "".join(retval)
+
+
 def load_labels():
     with open(FLAGS.labels_file) as f:
-        return f.readline().strip().split(" ")
+        labels = f.readline().strip().split(" ")
+        switch_indexer = [0] * len(labels)
+        for idx, label in enumerate(labels):
+            switched_label = sideswitch_label(label)
+            switched_idx = labels.index(switched_label)
+            switch_indexer[idx] = switched_idx
+        return labels, switch_indexer
 
 def _parse_example(example_proto):
     features = {

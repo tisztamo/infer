@@ -4,7 +4,7 @@ import tensorflow as tf
 IMAGE_SIZE = 8
 FEATURE_PLANES = 6
 NUM_LABELS = 1972
-HIDDEN = 2048
+HIDDEN = 3072
 
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -91,12 +91,12 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
     if feature_tensor is None:
         feature_tensor, trainables = feature_extractor(data)
 
-    cc = tf.cast([data[1]], tf.float32)
-    cc = tf.transpose(cc)
+    #cc = tf.cast([data[1]], tf.float32)
+    #cc = tf.transpose(cc)
 
-    h_extra = tf.concat([feature_tensor, cc], axis=1)
+    h_extra = feature_tensor #tf.concat([feature_tensor, cc], axis=1)
 
-    W_fc1 = weight_variable([1568 * 64 + 1, HIDDEN])
+    W_fc1 = weight_variable([1568 * 64, HIDDEN])
     trainables.append(W_fc1)
     b_fc1 = bias_variable([HIDDEN])
     trainables.append(b_fc1)
