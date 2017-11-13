@@ -11,7 +11,7 @@ FLAGS = tf.app.flags.FLAGS
 TRANSFER_LEARNING = False
 START_LEARNING_RATE = 0.1 if not TRANSFER_LEARNING else 0.0002
 
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-*2400*onecolor")
+train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-2600*onecolor")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 

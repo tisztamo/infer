@@ -11,7 +11,7 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 18
+BACK_ENGINE_DEPTH = 2
 BEAM_SIZES = [0, 12]
 MAX_BLUNDER = 250
 EVAL_RANDOMNESS = 0
@@ -73,7 +73,7 @@ class Engine:
         logger.info("Opened back-engine " + self.back_engine.name)
 
     def evaluateStatic(self, board, back_engine_depth=BACK_ENGINE_DEPTH):
-        """Returns a chess.uci.Score with the static evaluation of the move"""
+        """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
         self.back_engine.position(board.copy())
         move, ponder = self.back_engine.go(depth=back_engine_depth)
         score = self.info_handler.info["score"][1]
@@ -164,7 +164,8 @@ class Engine:
             return CandidateMove(self, move, 0.0, score, ponder)
         if depth == 1:
             #self.print_candidate_moves(candidates)
-            print(best.appeal, best.probability, max_score - best.cp_score)
+            #print(best.appeal, best.probability, max_score - best.cp_score)
+            pass
         return best
 
 
@@ -173,7 +174,7 @@ class Engine:
         board = board.copy()
         static_move, pre_score, static_ponder = self.evaluate(board, BACK_ENGINE_DEPTH)
         move = self.search(board, try_move=try_move)
-        logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder))
+        logger.debug(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder))
         return move
 
     def newGame(self):
