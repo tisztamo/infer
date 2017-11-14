@@ -8,7 +8,7 @@ def from_board(board):
 class InsightBoard(chess.Board):
 
     def in_opening(self):
-        if len(self.move_stack) > 13:#TODO better definition of opening (eg. all pieces developed)
+        if self.fullmove_number > 10:#TODO better definition of opening (eg. all pieces developed)
             return False
         return True
 

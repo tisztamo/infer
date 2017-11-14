@@ -1,3 +1,4 @@
+from __future__ import print_function
 import codecs
 import tensorflow as tf
 import chess, chess.pgn
@@ -25,17 +26,22 @@ def _open_pgn_file(filename):
 def comment_on_move(node, board, move, score, turk_move):
     if score < turk_move.cp_score - 100:
         #, chess.Move.from_uci(turk_move.ponder)
-        hint = hinter.getHint(board, move)
+        hint_move = chess.Move.from_uci(turk_move.uci)
+        hint = hinter.getHint(board, move, hint_move)
         hint_text = ""
         if hint is not None:
             hint_text = " Hint: " + hint.text
         node.variations[0].comment = "Mistake (" + str(score - turk_move.cp_score) + ")" + hint_text
-        variation = node.add_line([chess.Move.from_uci(turk_move.uci)])
+        node.variations = node.variations[:1]
+        variation = node.add_line([hint_move])
 
 def analyse_game(game, turk):
     board = insight_board.from_board(game.board())
     node = game
+    i = 1
     while len(node.variations) > 0:
+        print(game.headers["White"] + " vs " + game.headers["Black"] + ": " + str(i), end="\r")
+        i = i + 1
         next_node = node.variations[0]
         move = next_node.move
         turk_move = turk.bestMove(board, try_move=move.uci())

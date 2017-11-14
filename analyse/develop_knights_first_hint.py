@@ -5,7 +5,7 @@ class DevelopKnightsFirstHint():
     def __init__(self):
         pass
 
-    def getHint(self, board, move):
+    def getHint(self, board, move, best_move):
         if len(board.move_stack) < 2 or not board.in_opening():
             return None
         if board.piece_type_at(move.from_square) != chess.BISHOP:
