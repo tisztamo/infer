@@ -11,7 +11,7 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 3
+BACK_ENGINE_DEPTH = 10
 BEAM_SIZES = [0, 12]
 MAX_BLUNDER = 250
 EVAL_RANDOMNESS = 0

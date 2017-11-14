@@ -6,11 +6,12 @@ import engine
 MY_NAME = "Turk Development"
 
 class PGNWriter():
-    def __init__(self, engine=None):
+    def __init__(self, engine=None, file_name="history.pgn"):
         self.board = None
         self.game = None
         self.last_node = None
         self.engine = engine
+        self.file_name = file_name
         self.new_game()
 
     def new_game(self):
@@ -53,7 +54,7 @@ class PGNWriter():
             else:
                 self.game.headers["Black"] = self.engine.name
             self.game.headers["Date"] = date.today().isoformat().replace("-", ".")
-        with open("history.pgn", "a") as pgn_file:
+        with open(self.file_name, "a") as pgn_file:
             exporter = chess.pgn.FileExporter(pgn_file)
             try:
                 self.game.accept(exporter)

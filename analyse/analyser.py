@@ -10,7 +10,9 @@ from analyse import hints, insight_board
 
 tf.app.flags.DEFINE_string('pgn_in', 'game.pgn',
                            'Path to pgn file containing games to analyse')
-tf.app.flags.DEFINE_string('encoding', 'latin-1',
+tf.app.flags.DEFINE_string('pgn_out', 'analysed.pgn',
+                           'Output file')
+tf.app.flags.DEFINE_string('encoding', 'utf-8-sig',
                            'input pgn encoding (latin-1 or utf-8-sig)')
 
 FLAGS = tf.app.flags.FLAGS
@@ -67,6 +69,9 @@ def main(unused_argv):
         exporter = chess.pgn.StringExporter(headers=True, variations=True, comments=True)
         pgn_string = analysed.accept(exporter)
         print(pgn_string)
+        with codecs.open(FLAGS.pgn_out, "w", encoding=FLAGS.encoding) as pgn_out:
+            pgn_out.write(pgn_string)
+            pgn_out.write("\n")
 
 if __name__ == '__main__':
   tf.app.run()

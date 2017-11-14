@@ -6,8 +6,8 @@ class DevelopAllPiecesHint():
         pass
 
     def getHint(self, board, move, best_move):
-        if board.fullmove_number < 1 or not board.in_opening():
-            #print("Not in opening")
+        if board.fullmove_number < 4 or not board.in_opening():
+            #print("Not in opening" + str(board.fullmove_number))
             return None
         
         if board.piece_type_at(move.from_square) == chess.KING:
