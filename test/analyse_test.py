@@ -36,7 +36,10 @@ class TestHints(unittest.TestCase):
                 print(board.fen())
                 move = board.parse_san(words[1])
                 best_move = board.parse_san(words[2])
-                expected_hints = [int(hint) for hint in words[3].split(" ")]
+                if words[3].strip() != "":
+                    expected_hints = [int(hint) for hint in words[3].split(" ")]
+                else:
+                    expected_hints = []
                 got_hints = self.hinter.getHints(board, move, best_move)
                 got_hint_ids = [hint.id for hint in got_hints]
                 self.assertEqual(expected_hints, got_hint_ids)

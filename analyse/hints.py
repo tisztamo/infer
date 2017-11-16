@@ -3,9 +3,10 @@ from develop_knights_first_hint import DevelopKnightsFirstHint
 from develop_all_pieces_hint import DevelopAllPiecesHint
 from unnecessary_pawn_move_hint import UnnecessaryPawnMoveHint
 from unnecessary_check_hint import UnnecessaryCheckHint
+from dont_open_when_late_hint import DontOpenWhenLateHint
 
 DEFAULT_HINTS = [SamePieceTwiceHint(), DevelopKnightsFirstHint(), DevelopAllPiecesHint(),
- UnnecessaryPawnMoveHint(), UnnecessaryCheckHint()]
+ UnnecessaryPawnMoveHint(), UnnecessaryCheckHint(), DontOpenWhenLateHint()]
 
 class Hinter:
 
