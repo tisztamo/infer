@@ -2,12 +2,12 @@ import tensorflow as tf
 import numpy as np
 import input
 
-INPUT_FILENAME =  "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2600-55200-end-nokasparov"
-OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2600-55200-end-nokasparov-onecolor"
+INPUT_FILENAME =  "/mnt/red/train/humanlike/preprocessed/kasparov/kasparov-tr"
+OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/kasparov/kasparov-tr-onecolor"
 record_iterator = tf.python_io.tf_record_iterator(path=INPUT_FILENAME)
 
 
-tf.app.flags.DEFINE_string('eval_depth', '5',
+tf.app.flags.DEFINE_string('eval_depth', '0',
                            'Depth to eval position using the external engine')
 FLAGS = tf.app.flags.FLAGS
 
@@ -30,7 +30,7 @@ def filter(example):
     #                             .bytes_list
     #                             .value[0])
     # complexity = (example.features.feature['board/complexity'].int64_list.value[0])
-    return not filter_by_player(example)
+    return filter_by_player(example)
 
 def _int64_feature(value):
     """Wrapper for inserting int64 features into Example proto."""
@@ -69,7 +69,7 @@ def switch_if_black(example):
         'move/turn': _int64_feature(1),
         'move/label': _int64_feature(label)
     }
-    if FLAGS.disable_cp != "false" or int(FLAGS.eval_depth) > 0:
+    if FLAGS.disable_cp != "true" or int(FLAGS.eval_depth) > 0:
         key = "board/cp_score/" + FLAGS.eval_depth
         feature_desc[key] = _int64_feature(example.features.feature[key].int64_list.value[0])
 

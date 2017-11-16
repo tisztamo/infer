@@ -1,3 +1,4 @@
 class Hint:
-    def __init__(self, text):
+    def __init__(self, id, text):
+        self.id = id
         self.text = text

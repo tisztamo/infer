@@ -1,8 +1,11 @@
 from same_piece_twice_hint import SamePieceTwiceHint
 from develop_knights_first_hint import DevelopKnightsFirstHint
 from develop_all_pieces_hint import DevelopAllPiecesHint
+from unnecessary_pawn_move_hint import UnnecessaryPawnMoveHint
+from unnecessary_check_hint import UnnecessaryCheckHint
 
-DEFAULT_HINTS = [SamePieceTwiceHint(), DevelopKnightsFirstHint(), DevelopAllPiecesHint()]
+DEFAULT_HINTS = [SamePieceTwiceHint(), DevelopKnightsFirstHint(), DevelopAllPiecesHint(),
+ UnnecessaryPawnMoveHint(), UnnecessaryCheckHint()]
 
 class Hinter:
 

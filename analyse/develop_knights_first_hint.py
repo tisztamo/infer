@@ -15,5 +15,5 @@ class DevelopKnightsFirstHint():
         my_bishops = board.pieces(chess.BISHOP, board.turn)
         if len(my_knights.intersection(board.my_rank())) == 2 \
             and len(my_bishops.intersection(board.my_rank())) < 2: #the last bishop is coming out or the first one moves twice
-            return Hint("#2 Develop Knights before bishops")
+            return Hint(2, "Develop Knights before bishops")
         return None

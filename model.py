@@ -4,7 +4,7 @@ import tensorflow as tf
 IMAGE_SIZE = 8
 FEATURE_PLANES = 6
 NUM_LABELS = 1972
-HIDDEN = 3072
+HIDDEN = 1024 * 8
 
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -68,15 +68,27 @@ def extractor_layer(input, num_1x1=0, num_3x3=0, num_5x5=0, num_7x7=0, trainable
 
     return tf.concat(extractors, 3)
     
+def squeeze_layer(input, filter_num, trainables=[]):
+    num_input_filters = int(input.shape[3])
+    print("Creating squeeze layer for ", num_input_filters, "inputs.")
+    return conv_layer(input, 1, 1, filter_num, trainables)
+
+    
 def feature_extractor(data):
     trainables = []
 
-    h_conv1 = extractor_layer(data[0], 32, 256, 256, 256, trainables)
-    h_conv2 = extractor_layer(h_conv1, 32, 256, 256, 256, trainables)
-    h_conv3 = extractor_layer(h_conv2, 32, 512, 256, 0, trainables)
-    h_conv4 = extractor_layer(h_conv3, 32, 768, 512, 256, trainables)
+    h_conv1 = extractor_layer(data[0], 6, 16, 16, 16, trainables)
+#    h_conv2 = squeeze_layer(h_conv1, 128, trainables)
+    h_conv3 = extractor_layer(h_conv1, 64, 64, 32, 16, trainables)
+#    h_conv4 = squeeze_layer(h_conv3, 256, trainables)
+    h_conv5 = extractor_layer(h_conv3, 128, 64, 32, 16, trainables)
+#    h_conv6 = squeeze_layer(h_conv5, 256, trainables)
+    h_conv7 = extractor_layer(h_conv5, 192, 64, 32, 16, trainables)
+#    h_conv8 = squeeze_layer(h_conv7, 384, trainables)
+    h_conv9 = extractor_layer(h_conv7, 192, 64, 32, 16, trainables)
+#    h_conv10 = squeeze_layer(h_conv9, 800, trainables)#Does this add anything?
 
-    h_flat = tf.reshape(h_conv4, [-1, 1568 * 64])
+    h_flat = tf.reshape(h_conv7, [-1, (192+64+32+16) * 64])
 
     return h_flat, trainables
 
@@ -88,92 +100,20 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
         feature_tensor: Extracted features as returned by feature_extractor.
         dropout: The probability of an activation to be _dropped_ on the dropout layer.
     """
+    hidden_layer_sizes = [HIDDEN] * 6 + [NUM_LABELS]
+
     if feature_tensor is None:
         feature_tensor, trainables = feature_extractor(data)
 
-    #cc = tf.cast([data[1]], tf.float32)
-    #cc = tf.transpose(cc)
+    cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
 
-    h_extra = feature_tensor #tf.concat([feature_tensor, cc], axis=1)
+    prev_output = feature_tensor
+    for layer_size in hidden_layer_sizes:
+        h_input = tf.concat([prev_output, cc], axis=1)
+        W = weight_variable([int(h_input.shape[1]), layer_size])
+        trainables.append(W)
+        b = bias_variable([layer_size])
+        trainables.append(b)
+        prev_output = tf.nn.relu(tf.matmul(h_input, W) + b)
 
-    W_fc1 = weight_variable([1568 * 64, HIDDEN])
-    trainables.append(W_fc1)
-    b_fc1 = bias_variable([HIDDEN])
-    trainables.append(b_fc1)
-    h_fc1 = tf.nn.relu(tf.matmul(h_extra, W_fc1) + b_fc1)
-
-    if dropout >= 0.0:
-        h_dropout1 = tf.nn.dropout(h_fc1, 1.0 - dropout)
-    else:
-        h_dropout1  = h_fc1
-
-
-    #Not working, fails to learn
-    # W_bottleneck = weight_variable([HIDDEN, 500])
-    # trainables.append(W_bottleneck)
-    # b_bottleneck = bias_variable([500])
-    # trainables.append(b_bottleneck)
-    # h_bottleneck = tf.nn.relu(tf.matmul(h_dropout1, W_bottleneck) + b_bottleneck)
-    # if dropout >= 0.0:
-    #     h_dropout_bottleneck = tf.nn.dropout(h_bottleneck, 1.0 - dropout)
-    # else:
-    #     h_dropout_bottleneck  = h_bottleneck
-
-
-    W_fc2 = weight_variable([HIDDEN, HIDDEN])
-    trainables.append(W_fc2)
-    b_fc2 = bias_variable([HIDDEN])
-    trainables.append(b_fc2)
-    h_fc2 = tf.nn.relu(tf.matmul(h_dropout1, W_fc2) + b_fc2)
-
-    if dropout >= 0.0:
-        h_dropout2 = tf.nn.dropout(h_fc2, 1.0 - dropout)
-    else:
-        h_dropout2  = h_fc2
-
-    W_fc3 = weight_variable([HIDDEN, HIDDEN])
-    trainables.append(W_fc3)
-    b_fc3 = bias_variable([HIDDEN])
-    trainables.append(b_fc3)
-    h_fc3 = tf.nn.relu(tf.matmul(h_dropout2, W_fc3) + b_fc3)
-
-    if dropout >= 0.0:
-        h_dropout3 = tf.nn.dropout(h_fc3, 1.0 - dropout)
-    else:
-        h_dropout3  = h_fc3
-
-    W_fc4 = weight_variable([HIDDEN, NUM_LABELS])
-    trainables.append(W_fc4)
-    b_fc4 = bias_variable([NUM_LABELS])
-    trainables.append(b_fc4)
-
-    readout = tf.matmul(h_dropout3, W_fc4) + b_fc4
-    return readout, trainables
-
-def value_model(data, feature_tensor=None, trainables=[]):
-    if feature_tensor is None:
-        feature_tensor, trainables = feature_extractor(data)
-
-    value_extradata = tf.cast([data[1]], tf.float32)
-    value_extradata = tf.transpose(value_extradata)
-    value_h_extra = tf.concat([feature_tensor, value_extradata], axis=1)
-
-    value_W_fc1 = weight_variable([1024 * 64 + 1, HIDDEN])
-    trainables.append(value_W_fc1)
-    value_b_fc1 = bias_variable([HIDDEN])
-    trainables.append(value_b_fc1)
-    value_h_fc1 = tf.nn.tanh(tf.matmul(value_h_extra, value_W_fc1) + value_b_fc1)
-
-    value_W_fc2 = weight_variable([HIDDEN, HIDDEN])
-    trainables.append(value_W_fc2)
-    value_b_fc2 = bias_variable([HIDDEN])
-    trainables.append(value_b_fc2)
-    value_h_fc2 = tf.nn.tanh(tf.matmul(value_h_fc1, value_W_fc2) + value_b_fc2)
-
-    value_W_fc3 = weight_variable([HIDDEN, 1])
-    trainables.append(value_W_fc3)
-    value_b_fc3 = bias_variable([1])
-    trainables.append(value_b_fc3)
-
-    readout = tf.matmul(value_h_fc2, value_W_fc3) + value_b_fc3
-    return tf.reshape(readout, [-1]), trainables
+    return prev_output, trainables

@@ -32,7 +32,7 @@ loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, lab
 
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           1500, 0.99, staircase=False)
+                                           1000, 0.99, staircase=False)
 trained_vars = trainables[-6:] if TRANSFER_LEARNING else trainables
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step, var_list=trained_vars)
 

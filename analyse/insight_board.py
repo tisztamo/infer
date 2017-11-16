@@ -17,6 +17,9 @@ class InsightBoard(chess.Board):
             return chess.BB_RANK_1
         return chess.BB_RANK_8
 
+    def is_in_bigcenter(self, square):
+        return chess.square_rank(square) in [2,3,4,5] and chess.square_file(square) in [2,3,4,5]
+
     def copy(self, stack=True):
          board = super(InsightBoard, self).copy(stack)
          return board

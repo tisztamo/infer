@@ -25,4 +25,4 @@ class DevelopAllPiecesHint():
             return None
 
         #print("The best move: " + str(best_move))
-        return Hint("#1 Rapidly develop all pieces")
+        return Hint(1, "Rapidly develop all pieces")

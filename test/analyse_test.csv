@@ -1,0 +1,6 @@
+fen_or_moves_from_startpos,move,best_move,hints
+e4 c6 Nf3 d5,Ne5,e5,3
+e4 c6 Nf3 d5 e5 e6 d4,c5,Ne7,1
+e4 c6 Nf3 d5 e5 e6 d4,b5,Ne7,1 4
+e4 e5,a3,Nf3,4
+rnbqkbnr/ppp2ppp/4p3/3P4/3P4/8/PPP2PPP/RNBQKBNR b KQkq d3 0 3,Bb4+,exd5,5
