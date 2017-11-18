@@ -11,8 +11,8 @@ ENGINE_NAME="Turk Development"
 BACK_ENGINE_EXE = "../stockfish-8-linux/Linux/stockfish_8_x64_modern"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BACK_ENGINE_DEPTH = 4
-BEAM_SIZES = [0, 12]
+BACK_ENGINE_DEPTH = 11
+BEAM_SIZES = [0, 12, 12]
 MAX_BLUNDER = 250
 EVAL_RANDOMNESS = 0
 STALEMATE_SCORE = -20
@@ -108,7 +108,7 @@ class Engine:
         return retval
 
 
-    def search(self, board, depth=1, try_move=None):
+    def search(self, board, depth=2, try_move=None):
         STALEMATE = -100000 #Smaller than the smallest possible score
         if board.is_checkmate():
             if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":

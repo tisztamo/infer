@@ -2,12 +2,12 @@ import tensorflow as tf
 import numpy as np
 import input
 
-INPUT_FILENAME =  "/mnt/red/train/humanlike/preprocessed/kasparov/kasparov-tr"
-OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/kasparov/kasparov-tr-onecolor"
+INPUT_FILENAME =  "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2200-2400"
+OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2200-2400-onecolor2"
 record_iterator = tf.python_io.tf_record_iterator(path=INPUT_FILENAME)
 
 
-tf.app.flags.DEFINE_string('eval_depth', '0',
+tf.app.flags.DEFINE_string('eval_depth', '1',
                            'Depth to eval position using the external engine')
 FLAGS = tf.app.flags.FLAGS
 
@@ -18,7 +18,7 @@ label_strings, _ = input.load_labels()
 
 def filter_by_player(example):
     player_hash = example.features.feature["move/player"].int64_list.value[0]
-    return player_hash == SEARCHED_PLAYER
+    return player_hash != SEARCHED_PLAYER
 
 def filter(example):
     # cp_score = int(example.features.feature['board/cp_score']
@@ -71,7 +71,7 @@ def switch_if_black(example):
     }
     if FLAGS.disable_cp != "true" or int(FLAGS.eval_depth) > 0:
         key = "board/cp_score/" + FLAGS.eval_depth
-        feature_desc[key] = _int64_feature(example.features.feature[key].int64_list.value[0])
+        feature_desc[key] = _int64_feature(-example.features.feature[key].int64_list.value[0])
 
     example = tf.train.Example(features=tf.train.Features(feature=feature_desc)) 
     return example

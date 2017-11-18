@@ -4,7 +4,7 @@ import tensorflow as tf
 IMAGE_SIZE = 8
 FEATURE_PLANES = 6
 NUM_LABELS = 1972
-HIDDEN = 1024 * 8
+HIDDEN = 2048 + 512
 
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -77,18 +77,17 @@ def squeeze_layer(input, filter_num, trainables=[]):
 def feature_extractor(data):
     trainables = []
 
-    h_conv1 = extractor_layer(data[0], 6, 16, 16, 16, trainables)
-#    h_conv2 = squeeze_layer(h_conv1, 128, trainables)
-    h_conv3 = extractor_layer(h_conv1, 64, 64, 32, 16, trainables)
-#    h_conv4 = squeeze_layer(h_conv3, 256, trainables)
-    h_conv5 = extractor_layer(h_conv3, 128, 64, 32, 16, trainables)
-#    h_conv6 = squeeze_layer(h_conv5, 256, trainables)
-    h_conv7 = extractor_layer(h_conv5, 192, 64, 32, 16, trainables)
-#    h_conv8 = squeeze_layer(h_conv7, 384, trainables)
-    h_conv9 = extractor_layer(h_conv7, 192, 64, 32, 16, trainables)
-#    h_conv10 = squeeze_layer(h_conv9, 800, trainables)#Does this add anything?
+    h_conv1 = extractor_layer(data[0], 16, 256, 64, 64, trainables)
+    input2 = tf.concat([data[0], h_conv1], axis=3)
+    h_conv2 = extractor_layer(input2, 32, 384, 128, 64, trainables)
+    input3 = tf.concat([data[0], h_conv2], axis=3)
+    h_conv3 = extractor_layer(input3, 32, 512, 64, 32, trainables)
+    input4 = tf.concat([data[0], h_conv3], axis=3)
+    h_conv4 = extractor_layer(input4, 32, 1024, 128, 64, trainables)
+    input5 = tf.concat([data[0], h_conv4], axis=3)
+    h_conv5 = extractor_layer(input5, 32, 1024 + 256, 128, 64, trainables)
 
-    h_flat = tf.reshape(h_conv7, [-1, (192+64+32+16) * 64])
+    h_flat = tf.reshape(h_conv5, [-1, (32 + 1024 + 256 + 128 + 64) * 64])
 
     return h_flat, trainables
 
@@ -100,7 +99,7 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
         feature_tensor: Extracted features as returned by feature_extractor.
         dropout: The probability of an activation to be _dropped_ on the dropout layer.
     """
-    hidden_layer_sizes = [HIDDEN] * 6 + [NUM_LABELS]
+    hidden_layer_sizes = [HIDDEN] * 3 + [NUM_LABELS]
 
     if feature_tensor is None:
         feature_tensor, trainables = feature_extractor(data)
