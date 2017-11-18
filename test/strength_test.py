@@ -25,8 +25,8 @@ class TestStrengthManager(unittest.TestCase):
 
     def test_double_prob_accounts_for_cp(self):
         board = chess.Board()
-        self.assertAlmostEqual(self.manager.double_prob_accounts_for_cp(board), 950)
+        self.assertAlmostEqual(self.manager.double_prob_accounts_for_cp(board), strength.DOUBLE_PROB_ACCOUNTS_FOR_CP)
 
         board = chess.Board(fen="8/3r4/q6K/1p3p2/2p3k1/8/8/8 w - - 10 63")
-        self.assertAlmostEqual(self.manager.double_prob_accounts_for_cp(board), 0.21794872 * 950, 5)
+        self.assertAlmostEqual(self.manager.double_prob_accounts_for_cp(board), 0.21794872 * strength.DOUBLE_PROB_ACCOUNTS_FOR_CP, 5)
         

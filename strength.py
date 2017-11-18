@@ -3,6 +3,8 @@ import log
 
 logger = log.getLogger("engine.strength")
 
+DOUBLE_PROB_ACCOUNTS_FOR_CP = 250
+
 class StrengthManager:
     def __init__(self, engine_):
         self.engine = engine_
@@ -10,7 +12,7 @@ class StrengthManager:
     def double_prob_accounts_for_cp(self, board=None):
         if board is None:
             board = self.engine.current_board
-        return 250 * (1 - self.game_stage(board))
+        return DOUBLE_PROB_ACCOUNTS_FOR_CP * (1 - self.game_stage(board))
 
     def game_stage(self, board=None):
         if board is None:
