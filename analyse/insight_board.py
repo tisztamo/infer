@@ -12,8 +12,10 @@ class InsightBoard(chess.Board):
             return False
         return True
 
-    def my_rank(self):
-        if self.turn == chess.WHITE:
+    def my_rank(self, color = None):
+        if color == None:
+            color = self.turn
+        if color == chess.WHITE:
             return chess.BB_RANK_1
         return chess.BB_RANK_8
 
@@ -29,6 +31,23 @@ class InsightBoard(chess.Board):
             if piece is not None and piece.piece_type in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
                 retval[int(piece.color)] += 1
         return retval
+
+    def first_pawn_rank_in_file(self, file, color = None):
+        if color == None:
+            color = self.turn
+        if color == chess.WHITE:
+            rank = 1
+            direction = 1
+        else:
+            rank = 7
+            direction = -1
+        pawn_rank = -1
+        while rank >= 0 and rank < 8:
+            if self.piece_at(chess.square(file, rank)) == chess.Piece(chess.PAWN, color):
+                pawn_rank = rank
+                break
+            rank += direction
+        return pawn_rank
 
     def copy(self, stack=True):
          board = super(InsightBoard, self).copy(stack)
