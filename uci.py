@@ -54,7 +54,8 @@ def parse_position(line):
 def handle_go(line):
     move = turk.move(board)
     pgn_writer.move(move)
-    return "bestmove " + str(move.uci) + " ponder " + str(move.ponder)
+    ponder = move.ponder if move.ponder is not None else "a1a2"
+    return "bestmove " + str(move.uci) + " ponder " + str(ponder)
 
 
 def handle_uci_input(line):

@@ -1,4 +1,3 @@
 - Batch normalization
-- Flip colors and board horizontally, tf.image.flip_up_down
 - Position value estimation using the combination of predefined features and CNN in order to get hints of the source of the value in human-understandable terms. (How much a Bishop-pair is worth in this situation?)
-- Network optimization => better results, faster training
+- Network optimization for better results and faster training

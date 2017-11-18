@@ -29,7 +29,7 @@ class PGNWriter():
 
     def move(self, move_):
         lost_score = None
-        if isinstance(move_, basestring):
+        if isinstance(move_, str):
             move = chess.Move.from_uci(move_)
         elif isinstance(move_, engine.CandidateMove):
             move = chess.Move.from_uci(move_.uci) if move_.uci is not None else None
