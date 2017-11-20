@@ -77,29 +77,28 @@ def squeeze_layer(input, filter_num, trainables=[]):
 def feature_extractor(data):
     trainables = []
 
-    h_conv1 = extractor_layer(data[0], 16, 256, 64, 64, trainables)
+    h_conv1 = extractor_layer(data[0], 16, 32, 16, 16, trainables)
     input2 = tf.concat([data[0], h_conv1], axis=3)
-    h_conv2 = extractor_layer(input2, 32, 384, 128, 64, trainables)
+    h_conv2 = extractor_layer(input2, 32, 384, 64, 32, trainables)
     input3 = tf.concat([data[0], h_conv2], axis=3)
     h_conv3 = extractor_layer(input3, 32, 512, 64, 32, trainables)
-    input4 = tf.concat([data[0], h_conv3], axis=3)
-    h_conv4 = extractor_layer(input4, 32, 1024, 128, 64, trainables)
-    input5 = tf.concat([data[0], h_conv4], axis=3)
-    h_conv5 = extractor_layer(input5, 32, 1024 + 256, 128, 64, trainables)
+    input4 = tf.concat([data[0], h_conv1, h_conv3], axis=3)
+    h_conv4 = extractor_layer(input4, 32, 768, 0, 0, trainables)
+    input5 = tf.concat([data[0], h_conv1, h_conv4], axis=3)
+    h_conv5 = extractor_layer(input5, 32, 1024, 0, 0, trainables)
+    input6 = tf.concat([data[0],h_conv1, h_conv5], axis=3)
+    h_conv6 = extractor_layer(input6, 32, 1024 + 256, 0, 0, trainables)
 
-    h_flat = tf.reshape(h_conv5, [-1, (32 + 1024 + 256 + 128 + 64) * 64])
+    h_flat = tf.reshape(h_conv6, [-1, (32 + 1024 + 256) * 64])
 
     return h_flat, trainables
 
-def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
+def model_head(data, feature_tensor = None, trainables = [], num_hidden_layers = 3, num_outputs = 1, use_tanh_at_end=False):
     """ data[0]: board representation
-        data[1]: turn
-        data[2]: player
 
         feature_tensor: Extracted features as returned by feature_extractor.
-        dropout: The probability of an activation to be _dropped_ on the dropout layer.
     """
-    hidden_layer_sizes = [HIDDEN] * 3 + [NUM_LABELS]
+    hidden_layer_sizes = [HIDDEN] * num_hidden_layers + [num_outputs]
 
     if feature_tensor is None:
         feature_tensor, trainables = feature_extractor(data)
@@ -107,12 +106,23 @@ def model(data, feature_tensor=None, trainables = [], dropout = 0.0):
     cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
 
     prev_output = feature_tensor
-    for layer_size in hidden_layer_sizes:
+    for idx, layer_size in enumerate(hidden_layer_sizes):
         h_input = tf.concat([prev_output, cc], axis=1)
         W = weight_variable([int(h_input.shape[1]), layer_size])
         trainables.append(W)
         b = bias_variable([layer_size])
         trainables.append(b)
-        prev_output = tf.nn.relu(tf.matmul(h_input, W) + b)
+        pre_activation = tf.matmul(h_input, W) + b
+        if use_tanh_at_end and idx == num_hidden_layers:
+            prev_output = tf.nn.tanh(pre_activation)
+        else:
+            prev_output = tf.nn.relu(pre_activation)
 
     return prev_output, trainables
+
+def policy_model(data, feature_tensor = None, trainables = []):
+    return model_head(data, feature_tensor, trainables, 3, NUM_LABELS)
+
+def result_model(data, feature_tensor = None, trainables = []):
+    return model_head(data, feature_tensor, trainables, 3, 1, use_tanh_at_end = True)
+    

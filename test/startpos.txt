@@ -1,3 +1,4 @@
 position startpos
 go
+quit
 

@@ -22,7 +22,7 @@ tf.app.flags.DEFINE_string('validation_dir', '../data/validation/',
                            'Validation data directory')
 tf.app.flags.DEFINE_string('output_dir', '../data/',
                            'Output data directory')
-tf.app.flags.DEFINE_string('eval_depth', '5',
+tf.app.flags.DEFINE_string('eval_depth', '0',
                            'Depth to eval position using the external engine')
 tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
                            'UCI engine executable')
@@ -116,7 +116,12 @@ def filter_game(game):
     return not white_is_comp and not black_is_comp and event.find("960") == -1
 
 def filter_move(board, move, player):
-    return FLAGS.filter_player == "" or FLAGS.filter_player == player
+    if FLAGS.filter_player == "":
+        return True
+    if FLAGS.filter_player.startswith("-"):
+        return not FLAGS.filter_player[1:] == player
+    else:
+        return FLAGS.filter_player == player
 
 
 def init_engines(num=4):
@@ -149,20 +154,24 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move, play
     game_headers = game.headers
     sixlayer_rep = input.encode_board(board)
     move_uci = move.uci()
+    result = game_headers["Result"]
+    result_code = 0
+    if result == "1-0":
+        result_code = 1
+    elif result == "0-1":
+        result_code = -1
+
     if board.turn == chess.BLACK:
         move_uci = input.sideswitch_label(move_uci)
+        cp_score = -cp_score
+        result_code = -result_code
 
     try:
         ply_count = int(game_headers["PlyCount"])
     except:
         ply_count = -1
 
-    result = game_headers["Result"]
-    result_code = 0
-    if result == "1-0":
-        result_code = 1
-    elif result == "0-1":
-        result = -1
+
     feature_desc = {
         'board/sixlayer': tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(sixlayer_rep))),
         'board/fen': _bytes_feature(tf.compat.as_bytes(board.fen())),
@@ -171,9 +180,8 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move, play
         #'game/basetime': _int64_feature(base_time),
         #'game/time_increment': _int64_feature(time_increment),
         #'game/total_ply_count': _int64_feature(ply_count),
-        #'game/result': _int64_feature(result_code),
+        'game/result': _int64_feature(result_code),
         'move/player': _int64_feature(input.hash_32(player)),
-        'move/turn': _int64_feature(1),# if board.turn == chess.WHITE else 0
         'move/uci': _bytes_feature(tf.compat.as_bytes(move_uci)),
         'move/label': _int64_feature(labels.index(move_uci))
     }
@@ -243,6 +251,8 @@ def _process_pgn_file(filename, writer, engines):
                     num_moves += 1
                     engine.start_evaluate_board(board, game, move)
                     engine_idx = (engine_idx + 1) % len(engines)
+                else:
+                    print("Dropped move by " + player)
                 board.push(move)
 
             num_processed += 1

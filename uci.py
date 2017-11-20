@@ -5,6 +5,7 @@ import fnmatch
 from nbstreamreader import NonBlockingStreamReader
 import engine
 import numpy as np
+import tensorflow as tf
 import chess
 import log
 import pgnwriter
@@ -13,7 +14,6 @@ logger = log.getLogger("uci")
 
 board = chess.Board()
 turk = engine.Engine()
-turk.initBackEngine()
 pgn_writer = pgnwriter.PGNWriter(turk)
 
 def find_transition_move(from_board, to_board):
@@ -86,8 +86,9 @@ def handle_uci_input(line):
 #     return target
 
 
-def main():
+def main(unused_argv):
     #stdin = NonBlockingStreamReader(sys.stdin)
+    turk.initBackEngine()
     while True:
         line = sys.stdin.readline()
         if line != None:
@@ -95,4 +96,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    tf.app.run()

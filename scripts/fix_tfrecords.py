@@ -3,7 +3,7 @@ import numpy as np
 import input
 
 INPUT_FILENAME =  "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2200-2400"
-OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2200-2400-onecolor2"
+OUTPUT_FILENAME = "/mnt/red/train/humanlike/preprocessed/train-otb-hq-2200-2400-onecolor2x"
 record_iterator = tf.python_io.tf_record_iterator(path=INPUT_FILENAME)
 
 

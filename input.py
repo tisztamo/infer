@@ -93,7 +93,7 @@ def decode_board(encoded_board):
     return board
 
 def hash_32(str):
-    return zlib.adler32(str)
+    return zlib.adler32(str.encode('utf-8')) & 0xffffffff
 
 def sideswitch_label(label_str):
     retval = list(label_str)
@@ -115,10 +115,9 @@ def load_labels():
 def _parse_example(example_proto):
     features = {
         "board/sixlayer": tf.FixedLenFeature([384], tf.float32),
-        "move/turn": tf.FixedLenFeature((), tf.int64),
         "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64),
-        "board/fen": tf.FixedLenFeature((), tf.string)
+        "game/result": tf.FixedLenFeature((), tf.int64)
     }
     if FLAGS.disable_cp == "false":
         features["board/cp_score/"] = tf.FixedLenFeature((), tf.int64)
@@ -128,7 +127,7 @@ def _parse_example(example_proto):
     #cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/turn"], parsed_features["move/player"]), parsed_features["move/label"], parsed_features["board/fen"]#cp_score
+    return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"]
 
 def inputs(filenames, shuffle=True):
     dataset = tf.contrib.data.TFRecordDataset(filenames)

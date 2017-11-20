@@ -11,7 +11,8 @@ FLAGS = tf.app.flags.FLAGS
 TRANSFER_LEARNING = False
 START_LEARNING_RATE = 0.15 if not TRANSFER_LEARNING else 0.0002
 
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-2200*onecolor")
+# Inputs
+train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-2400*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -23,13 +24,22 @@ iterator = tf.contrib.data.Iterator.from_structure(dataset.output_types,
 
 training_init_op = iterator.make_initializer(dataset)
 
-examples, labels, cp_scores = iterator.get_next()
+examples, labels, results = iterator.get_next()
 
+# Model
 features, trainables = model.feature_extractor(examples)
-logits, trainables = model.model(examples, features, trainables, dropout=None)
-labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
-loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels))
+logits, trainables = model.policy_model(examples, features, trainables)
+result_predictions, trainables = model.result_model(examples, features, trainables)
 
+result_predictions = tf.reshape(result_predictions, tf.shape(results))
+labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
+
+# Losses
+policy_loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
+result_loss = tf.losses.mean_squared_error(labels=results, predictions=result_predictions)
+loss = tf.losses.get_total_loss()
+
+#Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
                                            1000, 0.99, staircase=False)
@@ -60,11 +70,11 @@ with tf.Session(config=config) as sess:
     while True:
         ts = time.time()
         for i in range(100):
-            _, l, step, lrate = sess.run([training_op, loss, global_step, learning_rate])
+            _, policy_l, result_l, l, step, lrate = sess.run([training_op, policy_loss, result_loss, loss, global_step, learning_rate])
         elapsed = time.time() -ts
     
         print("Learning rate", lrate)
-        print("Loss at batch %d: %.2f, speed: %.1f examples/s" % (step, l, 100 * input.BATCH_SIZE / elapsed))
+        print("Loss at batch %d: %.2f + %.2f = %.2f, speed: %.1f examples/s" % (step, policy_l, result_l, l, 100 * input.BATCH_SIZE / elapsed))
         #train_writer.add_summary(summaries, step)
 
         if step % 1000 == 0 and step > 0:

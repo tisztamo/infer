@@ -12,11 +12,11 @@ TOP_MAX = 5
 
 label_strings, _ = input.load_labels()
 
-validation_filenames = input.find_files(FLAGS.data_dir, "validation*onecolor")
+validation_filenames = input.find_files(FLAGS.data_dir, "vali*")
 print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 
-def accuracy(predictions, labels, fens):
+def accuracy(predictions, labels, fens=None):
     retval = np.array([0.0] * TOP_MAX)
     for k in range(1, TOP_MAX + 1):
         top_k_preds = np.take(np.argpartition(predictions, -k), range(-k, 0), 1)
@@ -26,11 +26,32 @@ def accuracy(predictions, labels, fens):
             found = np.nonzero(top_k_preds[i] == valid_labels[i])
             if len(found[0]) > 0:
                 good_pred_count += 1
-            if k == 1:
-               csv_out.write(fens[i] + "," + label_strings[valid_labels[i]] + "," + label_strings[top_k_preds[i][0]] + "\n")
+            if fens is not None:
+                if k == 1:
+                   csv_out.write(str(fens[i]) + "," + str(label_strings[valid_labels[i]]) + "," + str(label_strings[top_k_preds[i][0]]) + "\n")
         retval[k - 1] = (100.0 * good_pred_count
             / predictions.shape[0])
     return retval
+
+def result_accuracy(result_predictions, results):
+    threshold = 0.08
+    num_correct_preds = np.array([0] * 3)
+    num_preds = np.array([0] * 3)
+    for i, pred in enumerate(result_predictions):
+        if abs(results[i]) < 0.01:
+            num_preds[1] += 1
+            if abs(pred) < threshold:
+                num_correct_preds[1] += 1
+        elif results[i] > 0.99:
+            num_preds[2] += 1
+            if pred > threshold:
+                num_correct_preds[2] += 1
+        elif results[i] < -0.99:
+            num_preds[0] += 1
+            if pred < -threshold:
+                num_correct_preds[0] += 1
+    
+    return num_correct_preds, num_preds
 
 #with tf.device('/cpu:0'):
 validationfilenames = tf.placeholder(tf.string, shape=[None])
@@ -41,10 +62,13 @@ iterator = tf.contrib.data.Iterator.from_structure(validationset.output_types,
 
 validation_init_op = iterator.make_initializer(validationset)
 
-examples, labels, fens = iterator.get_next()
+examples, labels, results = iterator.get_next()
 
-logits, _ = model.model(examples, dropout = 0.0)
-prediction = tf.nn.softmax(logits)
+features, _ = model.feature_extractor(examples)
+logits, _ = model.policy_model(examples, features)
+result_prediction, _ = model.result_model(examples, features)
+
+prediction = tf.nn.softmax(logits)    
 
 labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 
@@ -58,14 +82,20 @@ try:
         if checkpoint and checkpoint.model_checkpoint_path:
             saver.restore(sess, checkpoint.model_checkpoint_path)
             print ("Successfully loaded:", checkpoint.model_checkpoint_path)
-            sum_pred_acc = [0] * TOP_MAX
+            sum_pred_acc = [0.0] * TOP_MAX
+            sum_res_correct_preds = np.array([0.0] * 3)
+            sum_res_preds = np.array([1] * 3)
             sess.run(validation_init_op, feed_dict={validationfilenames: validation_filenames})
             for i in range(NUM_BATCHES):
-                v_prediction, v_labels, v_fens = sess.run([prediction, labels, fens])
-                pred_acc = accuracy(v_prediction, v_labels, v_fens)
+                v_prediction, v_result_prediction, v_labels, v_results = sess.run([prediction, result_prediction, labels, results])
+                pred_acc = accuracy(v_prediction, v_labels)
+                res_correct_preds, res_preds = result_accuracy(v_result_prediction, v_results)
+                sum_res_correct_preds += res_correct_preds
+                sum_res_preds += res_preds
                 sum_pred_acc = np.add(sum_pred_acc, pred_acc)
                 mean_pred_acc = np.divide(sum_pred_acc, float(i + 1))
-                print("Top-k (k=1.." + str(TOP_MAX) + ") accuracy after batch #" + str(i) + ":", mean_pred_acc, end="\r")
+                mean_res_pred_acc = sum_res_correct_preds / sum_res_preds * 100.0
+                print("Batch #" + str(i) + " Result [-1,0,1]: ", mean_res_pred_acc, "Move top-k (k=1.." + str(TOP_MAX) + "):", mean_pred_acc, end="\r")
             print()
         else:
             print("No checkpoint found in logdir", FLAGS.logdir)
