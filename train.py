@@ -12,7 +12,7 @@ TRANSFER_LEARNING = False
 START_LEARNING_RATE = 0.15 if not TRANSFER_LEARNING else 0.0002
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-2400*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-otb-hq-2600*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 

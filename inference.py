@@ -6,9 +6,17 @@ import input
 import model
 import chess
 
+tf.app.flags.DEFINE_string('gpu', 'true',
+                           'Use the GPU')
+
 FLAGS = tf.app.flags.FLAGS
 
-with tf.device('/cpu:0'):
+if FLAGS.gpu == "true":
+    device = None
+else:
+    device = "/cpu:0"
+
+with tf.device(device):
     board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])
     player = tf.placeholder(tf.float32, shape=[1])
     example = [board, player]
@@ -56,7 +64,7 @@ def predict_result(board_, player_="?"):
 label_strings, switch_indexer = input.load_labels()
 
 
-def main():
+def main(unused_argv):
     #preds, result_pred = predict("r4r1R/pb2bkp1/4p3/3p1p1q/1ppPnB2/2P1P3/PPQ2PP1/2K4R w - - 0 22")
     #preds, result_pred = predict("r4r1R/pb2bkp1/4p3/3p1p1R/1ppPnB2/2P1P3/PPQ2PP1/2K5 b - - 0 22")
     result_pred = predict_result(chess.Board("r1bqkb1r/2ppn1pp/ppn2p2/3Pp3/2B1P3/2N2N2/PPP2PPP/R1BQK2R b KQkq - 0 7"))
@@ -72,4 +80,4 @@ def main():
     #     print(label_strings[candidates[idx]], preds[candidates[idx]])
 
 if __name__ == "__main__":
-    main()
+    tf.app.run()

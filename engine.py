@@ -6,15 +6,15 @@ import numpy as np
 import log
 import input, inference, strength
 
-tf.app.flags.DEFINE_string('play_first_intuition', 'true',
+tf.app.flags.DEFINE_string('play_first_intuition', 'false',
                            'Play the raw output of the policy network')
-tf.app.flags.DEFINE_string('use_back_engine', 'false',
+tf.app.flags.DEFINE_string('use_back_engine', 'true',
                            'Whether to use external engine for static (leaf) evaluation')
 tf.app.flags.DEFINE_string('back_engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64_modern',
                            'External engine executable')
-tf.app.flags.DEFINE_string('back_engine_depth', '18',
+tf.app.flags.DEFINE_string('back_engine_depth', '14',
                            'External engine search depth')
-tf.app.flags.DEFINE_string('search_depth', '1',
+tf.app.flags.DEFINE_string('search_depth', '6',
                            'Search depth')
 
 FLAGS = tf.app.flags.FLAGS
@@ -24,10 +24,10 @@ logger = log.getLogger("engine")
 ENGINE_NAME="Turk Development"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BEAM_SIZES = [0, 12, 12, 12, 12]
+BEAM_SIZES = [0, 6, 6, 12, 12, 12, 12]
 MAX_BLUNDER = 250
-EVAL_RANDOMNESS = 0
-STALEMATE_SCORE = -20
+EVAL_RANDOMNESS = 10
+STALEMATE_SCORE = -20 #For White
 
 BACK_ENGINE_THREADS = 4
 
@@ -109,11 +109,14 @@ class Engine:
         """Calculates the value in centipawns of the board
          relative to the side to move"""
         self.eval_count += 1
-        if board.is_checkmate():
-            if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
-                score = MATE_VAL
+        if board.is_game_over(True):
+            if board.is_checkmate():
+                if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
+                    score = MATE_VAL
+                else:
+                    score = -MATE_VAL
             else:
-                score = -MATE_VAL
+                score = STALEMATE_SCORE if board.turn == chess.WHITE else -STALEMATE_SCORE
             return None, score, None
         move, score, ponder = self.evaluateStatic(board, back_engine_depth)
         return move, self.cp_score(score), ponder
@@ -135,7 +138,7 @@ class Engine:
         return retval
 
     def alpha_beta_search(self, board, depth, alpha, beta, max_min=1):
-        if board.is_game_over():
+        if board.is_game_over(claim_draw=True):
             if board.is_checkmate():
                 if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
                     score = MATE_VAL * max_min
@@ -152,6 +155,11 @@ class Engine:
         move_counter = 0
         selected_candidate = None
         for candidate in candidates:
+            if move_counter == 0:
+                selected_candidate = candidate
+            move_counter += 1
+            if move_counter >= beam_size or candidate.probability < 0.5:
+                break
             move = candidate.uci
             try:
                 board.push_uci(move)
@@ -177,8 +185,8 @@ class Engine:
                     candidate.set_cp_score(beta)
                     #print(depth, "Beta cutoff after ", move_counter, candidate.uci)
                     return candidate #fail hard beta-cutoff
-                if score > alpha + 80 * depth:
-                    print(candidate.uci, score, alpha)
+                if score > alpha:
+                    #print(candidate.uci, score, alpha)
                     alpha = score #alpha acts like max in MiniMax
                     selected_candidate = candidate
             else:
@@ -190,22 +198,20 @@ class Engine:
                     beta = score
                     selected_candidate = candidate
 
-            move_counter += 1
-            if move_counter >= beam_size:
-                #print(depth, "No cutoff")
-                break
 
-        if selected_candidate is None:
-            print("No candidate was found")
+        if selected_candidate.cp_score is None:
+            print("Selected candidate's cp score is None")
             print(board)
-            print(depth)
+            print(depth, selected_candidate)
             for move in board.legal_moves:
-                return CandidateMove(self, move.uci(), None, None)
+                if move.uci() == selected_candidate.uci:
+                    return selected_candidate
+            return CandidateMove(self, move.uci(), None, None)
 
         return selected_candidate
         
 
-    def search(self, board, depth=1, try_move=None):
+    def beam_search(self, board, depth=1, try_move=None):
         STALEMATE = -100000 #Smaller than the smallest possible score
         if board.is_checkmate():
             if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
@@ -228,7 +234,7 @@ class Engine:
                 #logger.debug("Illegal move: " + str(move))
                 continue
 
-            ponder_candidate = self.search(board, depth - 1)
+            ponder_candidate = self.beam_search(board, depth - 1)
             score = STALEMATE_SCORE if ponder_candidate.cp_score == STALEMATE else -ponder_candidate.cp_score - 1
             candidate.set_cp_score(score)
             candidate.ponder = ponder_candidate.uci
@@ -256,12 +262,12 @@ class Engine:
 
         if best is None:
             logger.error("No candidate found for " + board.fen())
-            #self.print_candidate_moves(candidates)
+            self.print_candidate_moves(candidates)
             move, score, ponder = self.evaluate(board)
             return CandidateMove(self, move, 0.0, score, ponder)
         if depth == 1:
             #self.print_candidate_moves(candidates)
-            #print(best.appeal, best.probability, max_score - best.cp_score)
+            print(best.appeal, best.probability, max_score - best.cp_score)
             pass
         return best
 
@@ -272,10 +278,10 @@ class Engine:
         self.eval_count = 0
         ts=time.time()
         static_move, pre_score, static_ponder = self.evaluate(board)
-        #move = self.search(board, try_move=try_move)
-        move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
-        logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder))
-        print(self.eval_count, "nodes, nps:", (time.time() - ts) / self.eval_count * 1000.0)
+        move = self.beam_search(board, depth=1, try_move=None)
+        #move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
+        logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder) + " prob: " + str(move.probability) + " appeal: " + str(move.appeal))
+        print(self.eval_count, "nodes, nps:", float(self.eval_count) / (time.time() - ts))
         return move
 
     def newGame(self):

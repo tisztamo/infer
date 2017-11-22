@@ -26,8 +26,8 @@ def find_transition_move(from_board, to_board):
             found_move = move
             break
         try_board.pop()
-    if not move:
-        logger.log("Transition move not found from " + from_board.fen() + " to " + to_board.fen())
+    if not found_move:
+        logger.info("Transition move not found from " + from_board.fen() + " to " + to_board.fen())
     return found_move
 
 
