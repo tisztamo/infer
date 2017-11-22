@@ -4,10 +4,9 @@ import tensorflow.contrib.slim as slim
 
 IMAGE_SIZE = 8
 FEATURE_PLANES = 12
-NUM_HIDDEN_PLANES = 256
+NUM_HIDDEN_PLANES = 384
 NUM_RES_BLOCKS = 12
 NUM_LABELS = 1972
-HIDDEN = 1024
 
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -77,31 +76,33 @@ def squeeze_layer(input, filter_num, trainables=[]):
     return conv_layer(input, 1, 1, filter_num, trainables)
 
 
-def res_unit(input_layer,i):
+def res_unit(input_layer, board, i):
     with tf.variable_scope("res_unit" + str(i)):
-        part1 = slim.batch_norm(input_layer, activation_fn=None)
-        part2 = tf.nn.relu(part1)
-        part3 = slim.conv2d(part2, NUM_HIDDEN_PLANES,[3,3], activation_fn=None)
-        part4 = slim.batch_norm(part3, activation_fn=None)
-        part5 = tf.nn.relu(part4)
-        part6 = slim.conv2d(part5, NUM_HIDDEN_PLANES, [3, 3], activation_fn=None)
-        output = input_layer + part6
+        inp = tf.concat([input_layer, board], axis=3)
+        part = slim.conv2d(inp, NUM_HIDDEN_PLANES, [3,3], activation_fn=None)
+        part = slim.batch_norm(part, activation_fn=None)
+        part = tf.nn.relu(part)
+        part = slim.conv2d(part, NUM_HIDDEN_PLANES, [3, 3], activation_fn=None)
+        part = slim.batch_norm(part, activation_fn=None)
+        part = input_layer + part
+        output = tf.nn.relu(part)
         return output
     
 def feature_extractor(data):
     layer1 = slim.conv2d(data[0], NUM_HIDDEN_PLANES, [3, 3], normalizer_fn=slim.batch_norm, scope='conv_' + str(0))
+    layer1 = slim.batch_norm(layer1, activation_fn=None)
+    layer1 = tf.nn.relu(layer1)
     for i in range(NUM_RES_BLOCKS):
-        layer1 = res_unit(layer1, i)
+        layer1 = res_unit(layer1, data[0], i)
     
     h_flat = tf.reshape(layer1, [-1, (NUM_HIDDEN_PLANES) * 64])
     return h_flat
 
-def model_head(data, feature_tensor = None, num_hidden_layers = 3, num_outputs = 1, use_tanh_at_end=False):
+def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], use_tanh_at_end=False):
     """ data[0]: board representation
 
         feature_tensor: Extracted features as returned by feature_extractor.
     """
-    hidden_layer_sizes = [HIDDEN] * num_hidden_layers + [num_outputs]
 
     if feature_tensor is None:
         feature_tensor = feature_extractor(data)
@@ -114,7 +115,7 @@ def model_head(data, feature_tensor = None, num_hidden_layers = 3, num_outputs =
         W = weight_variable([int(h_input.shape[1]), layer_size])
         b = bias_variable([layer_size])
         pre_activation = tf.matmul(h_input, W) + b
-        if use_tanh_at_end and idx == num_hidden_layers:
+        if use_tanh_at_end and idx == len(hidden_layer_sizes) - 1:
             prev_output = tf.nn.tanh(pre_activation)
         else:
             prev_output = tf.nn.relu(pre_activation)
@@ -122,8 +123,8 @@ def model_head(data, feature_tensor = None, num_hidden_layers = 3, num_outputs =
     return prev_output
 
 def policy_model(data, feature_tensor = None):
-    return model_head(data, feature_tensor, 2, NUM_LABELS)
+    return model_head(data, feature_tensor, [4096, 3072, 2048, NUM_LABELS])
 
 def result_model(data, feature_tensor = None):
-    return model_head(data, feature_tensor, 2, 1, use_tanh_at_end = True)
+    return model_head(data, feature_tensor, [4096, 2048, 1024, 512, 1], use_tanh_at_end = True)
     

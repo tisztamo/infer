@@ -293,7 +293,7 @@ def main(unused_argv):
 
     engines = init_engines(3)
 
-    _process_dataset('validation', FLAGS.validation_dir, engines)
+    #_process_dataset('validation', FLAGS.validation_dir, engines)
     _process_dataset('train', FLAGS.train_dir, engines)
 
 if __name__ == '__main__':

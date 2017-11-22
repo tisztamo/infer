@@ -8,7 +8,7 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.03
+START_LEARNING_RATE = 0.005
 
 # Inputs
 train_filenames = input.find_files(FLAGS.data_dir, "train*")
@@ -35,13 +35,13 @@ labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 
 # Losses
 policy_loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
-result_loss = tf.losses.mean_squared_error(labels=results, predictions=result_predictions)
+result_loss = tf.losses.mean_squared_error(labels=results, predictions=result_predictions, weights=6)
 loss = tf.losses.get_total_loss()
 
 #Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           1200, 0.99, staircase=False)
+                                           1200, 0.99, staircase=True)
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
 saver = tf.train.Saver(save_relative_paths=True)
