@@ -29,7 +29,9 @@ tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8
 tf.app.flags.DEFINE_string('skip_games', '0',
                            'Skip the first N games')
 tf.app.flags.DEFINE_string('filter_player', '',
-                           'Process only moves of the given player')
+                           'Process only moves of the given player, or omit the player if the option starts with "-"')
+tf.app.flags.DEFINE_string('omit_draws', 'true',
+                           'Omit games that ended in a draw')
 
 FLAGS = tf.app.flags.FLAGS
 labels = []
@@ -112,6 +114,10 @@ def filter_game(game):
     try:
         event = game.headers["Event"]
     except:
+        return False
+    if FLAGS.omit_draws == "true" and game.headers["Result"] not in ["1-0", "0-1"]:
+        if game.headers["Result"] != "1/2-1/2":
+            print("Dropping game with result", game.headers["Result"])
         return False
     return not white_is_comp and not black_is_comp and event.find("960") == -1
 

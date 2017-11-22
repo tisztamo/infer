@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 IMAGE_SIZE = 8
-FEATURE_PLANES = 6
+FEATURE_PLANES = 12
 NUM_LABELS = 1972
 HIDDEN = 2048 + 512
 

@@ -10,7 +10,7 @@ tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
 tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
                            'Directory to store network parameters and training logs')
-tf.app.flags.DEFINE_string('disable_cp', 'false',
+tf.app.flags.DEFINE_string('disable_cp', 'true',
                            'Do not load of cp_score field from the tfrecord data files')
 tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
@@ -28,7 +28,7 @@ def find_files(directory, pattern):
     return files
 
 def encode_board(board):
-    rep = np.zeros((6, 8, 8), dtype=float)
+    rep = np.zeros((12, 8, 8), dtype=float)
     occupied_white = board.occupied_co[chess.WHITE]
     pawns = board.pawns
     knights = board.knights
@@ -38,22 +38,28 @@ def encode_board(board):
     kings = board.kings
     for col in range(0, 8):
         for row in range(0, 8):
-            mask = chess.BB_SQUARES[row * 8 +col]
+            mask = chess.BB_SQUARES[row * 8 + col]
             if pawns & mask:
-                rep[0, col, row] = 1 if occupied_white & mask else -1
+                rep[0, col, row] = 1 if occupied_white & mask else 0
+                rep[6, col, row] = 1 - rep[0, col, row]
             elif knights & mask:
-                rep[1, col, row] = 1 if occupied_white & mask else -1
+                rep[1, col, row] = 1 if occupied_white & mask else 0
+                rep[7, col, row] = 1 - rep[1, col, row]
             elif bishops & mask:
-                rep[2, col, row] = 1 if occupied_white & mask else -1
+                rep[2, col, row] = 1 if occupied_white & mask else 0
+                rep[8, col, row] = 1 - rep[2, col, row]
             elif rooks & mask:
-                rep[3, col, row] = 1 if occupied_white & mask else -1
+                rep[3, col, row] = 1 if occupied_white & mask else 0
+                rep[9, col, row] = 1 - rep[3, col, row]
             elif queens & mask:
-                rep[4, col, row] = 1 if occupied_white & mask else -1
+                rep[4, col, row] = 1 if occupied_white & mask else 0
+                rep[10, col, row] = 1 - rep[4, col, row]
             elif kings & mask:
-                rep[5, col, row] = 1 if occupied_white & mask else -1
+                rep[5, col, row] = 1 if occupied_white & mask else 0
+                rep[11, col, row] = 1 - rep[5, col, row]
 
     if board.turn == chess.BLACK:
-        rep = np.where(rep == 0.0, 0.0, -rep)
+        rep = np.where(rep == 0.0, 0.0, 1.0 - rep)
         rep = np.flip(rep, 2)
 
     return rep
@@ -67,27 +73,27 @@ def decode_board(encoded_board):
             piece = None
             if encoded_board[0, col, row] == 1:
                 piece = chess.Piece(chess.PAWN, chess.WHITE)
-            elif encoded_board[0, col, row] == -1:
+            elif encoded_board[6, col, row] == 1:
                 piece = chess.Piece(chess.PAWN, chess.BLACK)
             elif encoded_board[1, col, row] == 1:
                 piece = chess.Piece(chess.KNIGHT, chess.WHITE)
-            elif encoded_board[1, col, row] == -1:
+            elif encoded_board[7, col, row] == 1:
                 piece = chess.Piece(chess.KNIGHT, chess.BLACK)
             elif encoded_board[2, col, row] == 1:
                 piece = chess.Piece(chess.BISHOP, chess.WHITE)
-            elif encoded_board[2, col, row] == -1:
+            elif encoded_board[8, col, row] == 1:
                 piece = chess.Piece(chess.BISHOP, chess.BLACK)
             elif encoded_board[3, col, row] == 1:
                 piece = chess.Piece(chess.ROOK, chess.WHITE)
-            elif encoded_board[3, col, row] == -1:
+            elif encoded_board[9, col, row] == 1:
                 piece = chess.Piece(chess.ROOK, chess.BLACK)
             elif encoded_board[4, col, row] == 1:
                 piece = chess.Piece(chess.QUEEN, chess.WHITE)
-            elif encoded_board[4, col, row] == -1:
+            elif encoded_board[10, col, row] == 1:
                 piece = chess.Piece(chess.QUEEN, chess.BLACK)
             elif encoded_board[5, col, row] == 1:
                 piece = chess.Piece(chess.KING, chess.WHITE)
-            elif encoded_board[5, col, row] == -1:
+            elif encoded_board[11, col, row] == 1:
                 piece = chess.Piece(chess.KING, chess.BLACK)
             board.set_piece_at(square, piece)
     return board
@@ -114,7 +120,7 @@ def load_labels():
 
 def _parse_example(example_proto):
     features = {
-        "board/sixlayer": tf.FixedLenFeature([384], tf.float32),
+        "board/sixlayer": tf.FixedLenFeature([768], tf.float32),
         "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64),
         "game/result": tf.FixedLenFeature((), tf.int64)
@@ -125,7 +131,7 @@ def _parse_example(example_proto):
     parsed_features = tf.parse_single_example(example_proto, features)
     #cp_score = parsed_features["board/cp_score/"] if FLAGS.disable_cp == "false" else 0
     #cp_score = tf.cast(cp_score, tf.float32)
-    board = tf.reshape(parsed_features["board/sixlayer"], (6, 8, 8))
+    board = tf.reshape(parsed_features["board/sixlayer"], (12, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
     return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"]
 
