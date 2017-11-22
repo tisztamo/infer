@@ -17,13 +17,13 @@ else:
     device = "/cpu:0"
 
 with tf.device(device):
-    board = tf.placeholder(tf.float32, shape=[1, 8, 8, 6])
+    board = tf.placeholder(tf.float32, shape=[1, 8, 8, 12])
     player = tf.placeholder(tf.float32, shape=[1])
     example = [board, player]
 
-    features, _ = model.feature_extractor(example)
-    logits, _ = model.policy_model(example, features)
-    result_prediction, _ = model.result_model(example, features)
+    features = model.feature_extractor(example)
+    logits = model.policy_model(example, features)
+    result_prediction = model.result_model(example, features)
 
     saver = tf.train.Saver()
 

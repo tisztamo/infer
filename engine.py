@@ -306,7 +306,11 @@ class Engine:
             move = self.bestMove(board, self.try_move)
         self.try_move = move.ponder_ponder
         if move.uci is not None:
-            self.current_board.push_uci(move.uci)
+            try:
+                self.current_board.push_uci(move.uci)
+            except:
+                logger.error("Illegal move generated", str(move))
+                move.uci = list(self.current_board.legal_moves)[0].uci()
         return move
 
     def print_candidate_moves(self, candidate_moves):

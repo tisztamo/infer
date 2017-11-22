@@ -1,10 +1,13 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 
 IMAGE_SIZE = 8
 FEATURE_PLANES = 12
+NUM_HIDDEN_PLANES = 256
+NUM_RES_BLOCKS = 12
 NUM_LABELS = 1972
-HIDDEN = 2048 + 512
+HIDDEN = 1024
 
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -73,27 +76,27 @@ def squeeze_layer(input, filter_num, trainables=[]):
     print("Creating squeeze layer for ", num_input_filters, "inputs.")
     return conv_layer(input, 1, 1, filter_num, trainables)
 
+
+def res_unit(input_layer,i):
+    with tf.variable_scope("res_unit" + str(i)):
+        part1 = slim.batch_norm(input_layer, activation_fn=None)
+        part2 = tf.nn.relu(part1)
+        part3 = slim.conv2d(part2, NUM_HIDDEN_PLANES,[3,3], activation_fn=None)
+        part4 = slim.batch_norm(part3, activation_fn=None)
+        part5 = tf.nn.relu(part4)
+        part6 = slim.conv2d(part5, NUM_HIDDEN_PLANES, [3, 3], activation_fn=None)
+        output = input_layer + part6
+        return output
     
 def feature_extractor(data):
-    trainables = []
+    layer1 = slim.conv2d(data[0], NUM_HIDDEN_PLANES, [3, 3], normalizer_fn=slim.batch_norm, scope='conv_' + str(0))
+    for i in range(NUM_RES_BLOCKS):
+        layer1 = res_unit(layer1, i)
+    
+    h_flat = tf.reshape(layer1, [-1, (NUM_HIDDEN_PLANES) * 64])
+    return h_flat
 
-    h_conv1 = extractor_layer(data[0], 16, 32, 16, 16, trainables)
-    input2 = tf.concat([data[0], h_conv1], axis=3)
-    h_conv2 = extractor_layer(input2, 32, 384, 64, 32, trainables)
-    input3 = tf.concat([data[0], h_conv2], axis=3)
-    h_conv3 = extractor_layer(input3, 32, 512, 64, 32, trainables)
-    input4 = tf.concat([data[0], h_conv1, h_conv3], axis=3)
-    h_conv4 = extractor_layer(input4, 32, 768, 0, 0, trainables)
-    input5 = tf.concat([data[0], h_conv1, h_conv4], axis=3)
-    h_conv5 = extractor_layer(input5, 32, 1024, 0, 0, trainables)
-    input6 = tf.concat([data[0],h_conv1, h_conv5], axis=3)
-    h_conv6 = extractor_layer(input6, 32, 1024 + 256, 0, 0, trainables)
-
-    h_flat = tf.reshape(h_conv6, [-1, (32 + 1024 + 256) * 64])
-
-    return h_flat, trainables
-
-def model_head(data, feature_tensor = None, trainables = [], num_hidden_layers = 3, num_outputs = 1, use_tanh_at_end=False):
+def model_head(data, feature_tensor = None, num_hidden_layers = 3, num_outputs = 1, use_tanh_at_end=False):
     """ data[0]: board representation
 
         feature_tensor: Extracted features as returned by feature_extractor.
@@ -101,7 +104,7 @@ def model_head(data, feature_tensor = None, trainables = [], num_hidden_layers =
     hidden_layer_sizes = [HIDDEN] * num_hidden_layers + [num_outputs]
 
     if feature_tensor is None:
-        feature_tensor, trainables = feature_extractor(data)
+        feature_tensor = feature_extractor(data)
 
     cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
 
@@ -109,20 +112,18 @@ def model_head(data, feature_tensor = None, trainables = [], num_hidden_layers =
     for idx, layer_size in enumerate(hidden_layer_sizes):
         h_input = tf.concat([prev_output, cc], axis=1)
         W = weight_variable([int(h_input.shape[1]), layer_size])
-        trainables.append(W)
         b = bias_variable([layer_size])
-        trainables.append(b)
         pre_activation = tf.matmul(h_input, W) + b
         if use_tanh_at_end and idx == num_hidden_layers:
             prev_output = tf.nn.tanh(pre_activation)
         else:
             prev_output = tf.nn.relu(pre_activation)
 
-    return prev_output, trainables
+    return prev_output
 
-def policy_model(data, feature_tensor = None, trainables = []):
-    return model_head(data, feature_tensor, trainables, 3, NUM_LABELS)
+def policy_model(data, feature_tensor = None):
+    return model_head(data, feature_tensor, 2, NUM_LABELS)
 
-def result_model(data, feature_tensor = None, trainables = []):
-    return model_head(data, feature_tensor, trainables, 3, 1, use_tanh_at_end = True)
+def result_model(data, feature_tensor = None):
+    return model_head(data, feature_tensor, 2, 1, use_tanh_at_end = True)
     
