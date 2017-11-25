@@ -59,7 +59,7 @@ def encode_board(board):
                 rep[11, col, row] = 1 - rep[5, col, row]
 
     if board.turn == chess.BLACK:
-        rep = np.where(rep == 0.0, 0.0, 1.0 - rep)
+        rep = np.array([rep[6], rep[7], rep[8], rep[9], rep[10], rep[11], rep[0], rep[1], rep[2], rep[3], rep[4], rep[5]])
         rep = np.flip(rep, 2)
 
     return rep
@@ -144,3 +144,8 @@ def inputs(filenames, shuffle=True):
     if FLAGS.repeat_dataset != "false":
         dataset = dataset.repeat()
     return dataset
+
+if __name__ == "__main__":
+    board = chess.Board()
+    board.push_uci("e2e4")
+    encode_board(board)

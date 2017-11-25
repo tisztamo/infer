@@ -12,7 +12,7 @@ TOP_MAX = 5
 
 label_strings, _ = input.load_labels()
 
-validation_filenames = input.find_files(FLAGS.data_dir, "vali*")
+validation_filenames = input.find_files(FLAGS.data_dir, "trai*")
 print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 
@@ -34,7 +34,7 @@ def accuracy(predictions, labels, fens=None):
     return retval
 
 def result_accuracy(result_predictions, results):
-    threshold = 0.08
+    threshold = 0.001
     num_correct_preds = np.array([0] * 3)
     num_preds = np.array([0] * 3)
     for i, pred in enumerate(result_predictions):
@@ -64,9 +64,9 @@ validation_init_op = iterator.make_initializer(validationset)
 
 examples, labels, results = iterator.get_next()
 
-features, _ = model.feature_extractor(examples)
-logits, _ = model.policy_model(examples, features)
-result_prediction, _ = model.result_model(examples, features)
+features = model.feature_extractor(examples)
+logits = model.policy_model(examples, features)
+result_prediction = model.result_model(examples, features)
 
 prediction = tf.nn.softmax(logits)    
 

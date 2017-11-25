@@ -14,7 +14,7 @@ tf.app.flags.DEFINE_string('back_engine_exe', '../stockfish-8-linux/Linux/stockf
                            'External engine executable')
 tf.app.flags.DEFINE_string('back_engine_depth', '14',
                            'External engine search depth')
-tf.app.flags.DEFINE_string('search_depth', '6',
+tf.app.flags.DEFINE_string('search_depth', '3',
                            'Search depth')
 
 FLAGS = tf.app.flags.FLAGS
@@ -24,7 +24,7 @@ logger = log.getLogger("engine")
 ENGINE_NAME="Turk Development"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BEAM_SIZES = [0, 6, 6, 12, 12, 12, 12]
+BEAM_SIZES = [0, 12, 12, 12, 12, 12, 12]
 MAX_BLUNDER = 250
 EVAL_RANDOMNESS = 10
 STALEMATE_SCORE = -20 #For White
