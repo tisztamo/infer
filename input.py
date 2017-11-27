@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):
@@ -139,7 +139,7 @@ def inputs(filenames, shuffle=True):
     dataset = tf.contrib.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_example)
     if shuffle:
-        dataset = dataset.shuffle(buffer_size=10000)
+        dataset = dataset.shuffle(buffer_size=50000)
     dataset = dataset.batch(BATCH_SIZE)
     if FLAGS.repeat_dataset != "false":
         dataset = dataset.repeat()
