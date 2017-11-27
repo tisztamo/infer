@@ -12,7 +12,7 @@ tf.app.flags.DEFINE_string('use_back_engine', 'true',
                            'Whether to use external engine for static (leaf) evaluation')
 tf.app.flags.DEFINE_string('back_engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64_modern',
                            'External engine executable')
-tf.app.flags.DEFINE_string('back_engine_depth', '14',
+tf.app.flags.DEFINE_string('back_engine_depth', '1',
                            'External engine search depth')
 tf.app.flags.DEFINE_string('search_depth', '3',
                            'Search depth')

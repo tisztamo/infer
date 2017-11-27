@@ -8,7 +8,7 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.03
+START_LEARNING_RATE = 0.01
 
 # Inputs
 train_filenames = input.find_files(FLAGS.data_dir, "train-*")
@@ -41,8 +41,9 @@ loss = tf.losses.get_total_loss()
 #Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           1200, 0.99, staircase=True)
-training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step)
+                                           1400, 0.99, staircase=True)
+#Adagrad volt eredetileg!
+training_op = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, global_step=global_step)
 
 saver = tf.train.Saver(save_relative_paths=True)
 config = tf.ConfigProto()

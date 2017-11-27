@@ -4,8 +4,8 @@ import tensorflow.contrib.slim as slim
 
 IMAGE_SIZE = 8
 FEATURE_PLANES = 12
-NUM_HIDDEN_PLANES = 384
-NUM_RES_BLOCKS = 12
+NUM_HIDDEN_PLANES = 850
+NUM_RES_BLOCKS = 7
 NUM_LABELS = 1972
 
 def summary(var):
