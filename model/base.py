@@ -58,9 +58,10 @@ def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], use_tanh
     for idx, layer_size in enumerate(hidden_layer_sizes):
         h_input = tf.concat([prev_output, cc], axis=1)
         W = weight_variable([int(h_input.shape[1]), layer_size])
-        b = bias_variable([layer_size])
-        linear = tf.matmul(h_input, W) + b
-        pre_activation = slim.batch_norm(linear, activation_fn=None)
+        #b = bias_variable([layer_size])
+        linear = tf.matmul(h_input, W)# + b
+        #pre_activation = slim.batch_norm(linear, activation_fn=None)
+        pre_activation = linear
         if use_tanh_at_end and idx == len(hidden_layer_sizes) - 1:
             prev_output = tf.nn.tanh(pre_activation)
         else:

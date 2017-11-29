@@ -9,7 +9,8 @@ class CNNModel:
         pass
 
     def feature_extractor(self, data):
-        input = slim.batch_norm(data[0], activation_fn=None)
+        #input = slim.batch_norm(data[0], activation_fn=None)
+        input = data[0]
         h_conv1 = extractor_layer(input, 16, 32, 16, 16)
         input2 = tf.concat([input, h_conv1], axis=3)
         h_conv2 = extractor_layer(input2, 32, 384, 64, 32)
@@ -39,10 +40,9 @@ def conv2d(x, W, stride):
 def conv_layer(input, width, height, filter_num):
     num_input_filters = int(input.shape[3])
     w = base.weight_variable([width, height, num_input_filters, filter_num])
-    b = base.bias_variable([filter_num])
-    conv = conv2d(input, w, 1) + b
-    normed = slim.batch_norm(conv, activation_fn=None)
-    h = tf.nn.relu(normed)
+    conv = conv2d(input, w, 1)
+    #normed = slim.batch_norm(conv, activation_fn=None)
+    h = tf.nn.relu(conv)
     return h
 
 def extractor_layer(input, num_1x1=0, num_3x3=0, num_5x5=0, num_7x7=0):

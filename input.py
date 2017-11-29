@@ -16,7 +16,7 @@ tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
 
 FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 MATE_CP_SCORE = 20000
 
 def find_files(directory, pattern):

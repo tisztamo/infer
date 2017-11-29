@@ -12,7 +12,7 @@ TOP_MAX = 5
 
 label_strings, _ = input.load_labels()
 
-validation_filenames = input.find_files(FLAGS.data_dir, "*vali*")
+validation_filenames = input.find_files(FLAGS.data_dir, "*trai*")
 print("Found", len(validation_filenames), "validation files.")
 random.shuffle(validation_filenames)
 
@@ -53,26 +53,26 @@ def result_accuracy(result_predictions, results):
     
     return num_correct_preds, num_preds
 
-#with tf.device('/cpu:0'):
-validationfilenames = tf.placeholder(tf.string, shape=[None])
-validationset = input.inputs(validation_filenames, shuffle=False)
+with tf.device('/cpu:0'):
+    validationfilenames = tf.placeholder(tf.string, shape=[None])
+    validationset = input.inputs(validation_filenames, shuffle=False)
 
-iterator = tf.contrib.data.Iterator.from_structure(validationset.output_types,
-                                validationset.output_shapes)
+    iterator = tf.contrib.data.Iterator.from_structure(validationset.output_types,
+                                    validationset.output_shapes)
 
-validation_init_op = iterator.make_initializer(validationset)
+    validation_init_op = iterator.make_initializer(validationset)
 
-examples, labels, results = iterator.get_next()
+    examples, labels, results = iterator.get_next()
 
-features = model.feature_extractor(examples)
-logits = model.policy_model(examples, features)
-result_prediction = model.result_model(examples, features)
+    features = model.feature_extractor(examples)
+    logits = model.policy_model(examples, features)
+    result_prediction = model.result_model(examples, features)
 
-prediction = tf.nn.softmax(logits)    
+    prediction = tf.nn.softmax(logits)    
 
-labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
+    labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 
-saver = tf.train.Saver()
+    saver = tf.train.Saver()
 
 csv_out = open("validation.csv", "w")
 

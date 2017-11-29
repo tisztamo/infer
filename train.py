@@ -11,7 +11,7 @@ FLAGS = tf.app.flags.FLAGS
 START_LEARNING_RATE = 0.005
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-0*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -35,7 +35,7 @@ result_logits = model.result_model(examples, features)
 
 # Losses
 policy_loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
-result_loss = tf.losses.softmax_cross_entropy(logits=result_logits, onehot_labels=results_onehot, weights=5)
+result_loss = tf.losses.softmax_cross_entropy(logits=result_logits, onehot_labels=results_onehot, weights=2)
 loss = tf.losses.get_total_loss()
 
 #Training
