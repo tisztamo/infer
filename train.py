@@ -11,7 +11,7 @@ FLAGS = tf.app.flags.FLAGS
 START_LEARNING_RATE = 0.005
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-0*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -41,7 +41,7 @@ loss = tf.losses.get_total_loss()
 #Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           700, 0.99, staircase=True)
+                                           1600, 0.99, staircase=True)
 #Adagrad volt eredetileg!
 training_op = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, global_step=global_step)
 
