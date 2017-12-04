@@ -10,18 +10,18 @@ model_impl = None
 def get_model_impl():
     global model_impl
     if model_impl is None:
-        model_impl = cnn_model.CNNModel()
-        #model_impl = residual_model.ResidualModel()
+        #model_impl = cnn_model.CNNModel()
+        model_impl = residual_model.ResidualModel()
     return model_impl
 
 def feature_extractor(data):
     return get_model_impl().feature_extractor(data)
 
-def policy_model(data, feature_tensor = None):
-    return get_model_impl().policy_model(data, feature_tensor)
+def policy_model(data, feature_tensor = None, layers_out = None):
+    return get_model_impl().policy_model(data, feature_tensor, layers_out)
 
-def result_model(data, feature_tensor = None):
-    return get_model_impl().result_model(data, feature_tensor)
+def result_model(data, feature_tensor = None, layers_out = None):
+    return get_model_impl().result_model(data, feature_tensor, layers_out)
   
 def summary(var):
   """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
@@ -44,7 +44,7 @@ def bias_variable(shape):
     initial = tf.constant(-0.001, shape=shape)
     return tf.Variable(initial)
 
-def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], use_tanh_at_end=False):
+def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], layers_out = None, use_tanh_at_end=False):
     """ data[0]: board representation
 
         feature_tensor: Extracted features as returned by feature_extractor.
@@ -67,5 +67,7 @@ def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], use_tanh
             prev_output = tf.nn.tanh(pre_activation)
         else:
             prev_output = tf.nn.relu(pre_activation)
+        if layers_out is not None:
+            layers_out.append(prev_output)
 
     return prev_output

@@ -1,7 +1,8 @@
-- Batch normalization
+- Scope tf variables
+- More visualization
+- Fix batch normalization
 - Position value estimation using the combination of predefined features and CNN in order to get hints of the source of the value in human-understandable terms. (How much a Bishop-pair is worth in this situation?)
-- Network optimization for better results, faster training and inference
+- Network optimization/compression for better results, faster training and inference
 - Learn to classify positions that a player "likes" - e.g. positions from his winning games vs the same positions flipped (what his opponent sees)
-- Remove draws (and captures?) from evaluation training and use a 2-output classifier
 - Implement the DeepChess evaluation (and search)
 

@@ -7,7 +7,7 @@ import input
 import model
 
 FLAGS = tf.app.flags.FLAGS
-NUM_BATCHES =2001
+NUM_BATCHES = 2001
 TOP_MAX = 5
 
 label_strings, _ = input.load_labels()
@@ -37,23 +37,14 @@ def result_accuracy(result_predictions, results):
     threshold = 0.001
     num_correct_preds = np.array([0] * 3)
     num_preds = np.array([0] * 3)
-    for i, pred in enumerate(result_predictions):
-        if abs(results[i]) < 0.01:
-            num_preds[1] += 1
-            if abs(pred) < threshold:
-                num_correct_preds[1] += 1
-        elif results[i] > 0.99:
-            num_preds[2] += 1
-            if pred > threshold:
-                num_correct_preds[2] += 1
-        elif results[i] < -0.99:
-            num_preds[0] += 1
-            if pred < -threshold:
-                num_correct_preds[0] += 1
-    
+    for i, pred_logits in enumerate(result_predictions):
+        pred = np.argmax(pred_logits) - 1
+        num_preds[pred + 1] += 1
+        if results[i] == pred:
+            num_correct_preds[pred + 1] += 1
     return num_correct_preds, num_preds
 
-with tf.device('/cpu:0'):
+with tf.device(input.device):
     validationfilenames = tf.placeholder(tf.string, shape=[None])
     validationset = input.inputs(validation_filenames, shuffle=False)
 
@@ -99,7 +90,8 @@ try:
             print()
         else:
             print("No checkpoint found in logdir", FLAGS.logdir)
+    csv_out.close()
 except Exception as e:
-    print(e)
+    csv_out.close()
+    raise e
 
-csv_out.close()

@@ -11,7 +11,7 @@ FLAGS = tf.app.flags.FLAGS
 START_LEARNING_RATE = 0.005
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-otb*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -41,7 +41,7 @@ loss = tf.losses.get_total_loss()
 #Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           1600, 0.99, staircase=True)
+                                           800, 0.99, staircase=True)
 #Adagrad volt eredetileg!
 training_op = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, global_step=global_step)
 
@@ -62,13 +62,14 @@ with tf.Session(config=config) as sess:
     sess.run(training_init_op, feed_dict={filenames: train_filenames})
 
     l = 0
+    BATCH_PER_PRINT=10
     while True:
         ts = time.time()
-        for i in range(100):
+        for i in range(BATCH_PER_PRINT):
             _, policy_l, result_l, l, step, lrate = sess.run([training_op, policy_loss, result_loss, loss, global_step, learning_rate])
         elapsed = time.time() -ts
     
-        print("Loss at batch %d: %.2f + %.2f = %.2f, speed: %.1f examples/s, lr: %.5f" % (step, policy_l, result_l, l, 100 * input.BATCH_SIZE / elapsed, lrate))
+        print("Loss at batch %d: %.2f + %.2f = %.2f, speed: %.1f examples/s, lr: %.7f" % (step, policy_l, result_l, l, BATCH_PER_PRINT * input.BATCH_SIZE / elapsed, lrate))
         #train_writer.add_summary(summaries, step)
 
         if step % 1000 == 0 and step > 0:

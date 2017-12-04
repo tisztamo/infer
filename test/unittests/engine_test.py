@@ -2,10 +2,12 @@ import unittest, random
 from mock import patch
 import chess, chess.uci
 import numpy as np
+import tensorflow as tf
 import engine, strength
 
 class TestEngine(unittest.TestCase):
     def setUp(self):
+        tf.flags.FLAGS._parse_flags()
         self.engine = engine.Engine()
 
     def tearDown(self):
@@ -34,7 +36,7 @@ class TestEngine(unittest.TestCase):
         preds = [0, 9] + [0] * 98 + [ 10, 0, 8, 7, 6, 5, 4, 3, 2, 1] + [0] * 90 + [11, 12, 13, 14, 15, 16, 17, 18, 19, 20] + [0] * 800
         return np.array(preds)
 
-    @patch('inference.predict')
+    @patch('inference.predict_move')
     def test_candidate_idxs(self, predict_mock):
         predict_mock.return_value = self.sample_prediction()
         candidates, probs = self.engine.candidate_idxs(chess.Board())

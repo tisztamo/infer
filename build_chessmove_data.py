@@ -129,6 +129,8 @@ def filter_move(board, move, player):
     else:
         return FLAGS.filter_player == player
 
+def parse_eval_comment(move):
+    pass
 
 def init_engines(num=4):
     retval = []

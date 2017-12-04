@@ -11,17 +11,9 @@ import input
 import model
 import chess
 
-tf.app.flags.DEFINE_string('gpu', 'true',
-                           'Use the GPU')
-
 FLAGS = tf.app.flags.FLAGS
 
-if FLAGS.gpu == "true":
-    device = None
-else:
-    device = "/cpu:0"
-
-with tf.device(device):
+with tf.device(input.device):
     board = tf.placeholder(tf.float32, shape=[1, 8, 8, 12])
     player = tf.placeholder(tf.float32, shape=[1])
     example = [board, player]
@@ -90,9 +82,9 @@ label_strings, switch_indexer = input.load_labels()
 def main(unused_argv):
     #preds, result_pred = predict("r4r1R/pb2bkp1/4p3/3p1p1q/1ppPnB2/2P1P3/PPQ2PP1/2K4R w - - 0 22")
     #preds, result_pred = predict("r4r1R/pb2bkp1/4p3/3p1p1R/1ppPnB2/2P1P3/PPQ2PP1/2K5 b - - 0 22")
-    #result_pred = predict_result(chess.Board("r1bqkbB1/2ppn1p1/ppP2p1p/4p3/4P3/2N2N2/PPP2PPP/R1BQK2R b KQq - 0 9"))
-    #print("Result:", result_pred)
-    visualize_layer(chess.Board("r1bqkbB1/2ppn1p1/ppP2p1p/4p3/4P3/2N2N2/PPP2PPP/R1BQK2R b KQq - 0 9"))
+    result_pred = predict_result(chess.Board("r1bqkbB1/2ppn1p1/ppP2p1p/4p3/4P3/2N2N2/PPP2PPP/R1BQK2R b KQq - 0 9"))
+    print("Result:", result_pred)
+    #visualize_layer(chess.Board("r1bqkbB1/2ppn1p1/ppP2p1p/4p3/4P3/2N2N2/PPP2PPP/R1BQK2R b KQq - 0 9"))
     # preds = predict_move("rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
     # print(preds)
     # argmax = np.argmax(preds, 0)

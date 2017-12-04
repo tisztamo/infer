@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import sys, time
 import fnmatch
-from nbstreamreader import NonBlockingStreamReader
 import engine
 import numpy as np
 import tensorflow as tf
@@ -49,6 +48,7 @@ def parse_position(line):
             board = turk.current_board.copy()
             board.push(move)
             pgn_writer.move(move)
+    print(board.fen())
 
 
 def handle_go(line):
@@ -87,7 +87,6 @@ def handle_uci_input(line):
 
 
 def main(unused_argv):
-    #stdin = NonBlockingStreamReader(sys.stdin)
     turk.initBackEngine()
     while True:
         line = sys.stdin.readline()

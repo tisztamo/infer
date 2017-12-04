@@ -70,7 +70,7 @@ class Engine:
     @staticmethod
     def cp_score(uci_score_or_res_pred):
         if FLAGS.use_back_engine == "false":
-            return uci_score_or_res_pred * 1000
+            return uci_score_or_res_pred
         else:
             if uci_score_or_res_pred.cp is None:
                 mate_distance = min(abs(uci_score_or_res_pred.mate), 10)
@@ -90,7 +90,9 @@ class Engine:
     def evaluateStatic(self, board, back_engine_depth=None):
         """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
         if FLAGS.use_back_engine == "false":
-            return None, inference.predict_result(board), None
+            predicted_result = inference.predict_result(board)
+            score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
+            return None, score, None
         else:
             if back_engine_depth is None:
                 back_engine_depth = FLAGS.back_engine_depth
@@ -278,8 +280,8 @@ class Engine:
         self.eval_count = 0
         ts=time.time()
         static_move, pre_score, static_ponder = self.evaluate(board)
-        move = self.beam_search(board, depth=1, try_move=None)
-        #move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
+        #move = self.beam_search(board, depth=1, try_move=None)
+        move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
         logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder) + " prob: " + str(move.probability) + " appeal: " + str(move.appeal))
         print(self.eval_count, "nodes, nps:", float(self.eval_count) / (time.time() - ts))
         return move

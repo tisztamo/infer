@@ -8,16 +8,23 @@ tf.app.flags.DEFINE_string('data_dir', '/mnt/red/train/humanlike/preprocessed/',
                            'Preprocessed training data directory')
 tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
-tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir',
+tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir/residual',
                            'Directory to store network parameters and training logs')
 tf.app.flags.DEFINE_string('disable_cp', 'true',
                            'Do not load of cp_score field from the tfrecord data files')
 tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
+tf.app.flags.DEFINE_string('gpu', 'true',
+                           'Use the GPU')
 
 FLAGS = tf.app.flags.FLAGS
 BATCH_SIZE = 128
 MATE_CP_SCORE = 20000
+
+if FLAGS.gpu == "true":
+    device = None
+else:
+    device = "/cpu:0"
 
 def find_files(directory, pattern):
     '''Recursively finds all files matching the pattern.'''
