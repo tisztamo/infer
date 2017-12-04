@@ -80,6 +80,8 @@ class Engine:
             return uci_score_or_res_pred.cp
 
     def initBackEngine(self):
+        if FLAGS.use_back_engine == "false":
+            return
         self.back_engine = chess.uci.popen_engine(FLAGS.back_engine_exe)
         self.info_handler = chess.uci.InfoHandler()
         self.back_engine.info_handlers.append(self.info_handler)
