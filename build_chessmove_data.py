@@ -142,7 +142,7 @@ def _convert_to_example(board, move, game, cp_score, player):
         'move/player': _int64_feature(input.hash_32(player)),
         'move/uci': _bytes_feature(tf.compat.as_bytes(move_uci)),
         'move/label': _int64_feature(labels.index(move_uci)),
-        'board/cp_score': _int64_feature(int(cp_score))
+        'board/cp_score': _float32_feature(cp_score)
     }
 
     example = tf.train.Example(features=tf.train.Features(feature=feature_desc))

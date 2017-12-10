@@ -8,10 +8,10 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.005
+START_LEARNING_RATE = 0.001
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
@@ -23,7 +23,7 @@ iterator = tf.contrib.data.Iterator.from_structure(dataset.output_types,
 
 training_init_op = iterator.make_initializer(dataset)
 
-examples, labels, results = iterator.get_next()
+examples, labels, results, _ = iterator.get_next()
 
 labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
 results_onehot = tf.one_hot(results + 1, 3, dtype=tf.float32)
@@ -48,6 +48,10 @@ training_op = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, glob
 saver = tf.train.Saver(save_relative_paths=True)
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
+
+move_vars = tf.trainable_variables()
+print("xxxx", len(move_vars))
+print([variable.name for variable in move_vars])
 
 with tf.Session(config=config) as sess:
     merged_summaries = tf.summary.merge_all()

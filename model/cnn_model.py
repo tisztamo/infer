@@ -27,11 +27,11 @@ class CNNModel:
 
         return h_flat
 
-    def policy_model(self, data, feature_tensor):
-        return base.model_head(data, feature_tensor, [2048, 2048, model.NUM_LABELS])
+    def policy_model(self, data, feature_tensor, layers_out = None):
+        return base.model_head(data, feature_tensor, [2048, 2048, model.NUM_LABELS], layers_out)
 
-    def result_model(self, data, feature_tensor):
-        return base.model_head(data, feature_tensor, [2048, 2048, 3])
+    def result_model(self, data, feature_tensor, layers_out=None):
+        return base.model_head(data, feature_tensor, [2048, 2048, 3], layers_out)
 
 
 def conv2d(x, W, stride):

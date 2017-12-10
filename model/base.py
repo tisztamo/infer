@@ -10,8 +10,8 @@ model_impl = None
 def get_model_impl():
     global model_impl
     if model_impl is None:
-        #model_impl = cnn_model.CNNModel()
-        model_impl = residual_model.ResidualModel()
+        model_impl = cnn_model.CNNModel()
+        #model_impl = residual_model.ResidualModel()
     return model_impl
 
 def feature_extractor(data):
@@ -37,7 +37,7 @@ def summary(var):
 
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.01)
+    initial = tf.truncated_normal(shape, stddev=0.3)
     return tf.Variable(initial)
 
 def bias_variable(shape):
@@ -53,21 +53,25 @@ def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], layers_o
     if feature_tensor is None:
         feature_tensor = feature_extractor(data)
 
-    cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
+    if data is not None:
+        cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
 
     prev_output = feature_tensor
     for idx, layer_size in enumerate(hidden_layer_sizes):
-        h_input = tf.concat([prev_output, cc], axis=1)
+        if data is not None:
+            h_input = tf.concat([prev_output, cc], axis=1)
+        else:
+            h_input = prev_output
         W = weight_variable([int(h_input.shape[1]), layer_size])
         #b = bias_variable([layer_size])
         linear = tf.matmul(h_input, W)# + b
-        #pre_activation = slim.batch_norm(linear, activation_fn=None)
+        pre_activation = slim.batch_norm(linear, activation_fn=None)
         pre_activation = linear
         if use_tanh_at_end and idx == len(hidden_layer_sizes) - 1:
             prev_output = tf.nn.tanh(pre_activation)
         else:
             prev_output = tf.nn.relu(pre_activation)
         if layers_out is not None:
-            layers_out.append(prev_output)
+            layers_out.append(W)
 
     return prev_output

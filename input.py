@@ -78,29 +78,29 @@ def decode_board(encoded_board):
         for row in range(0, 8):
             square = chess.square(col, row)
             piece = None
-            if encoded_board[0, col, row] == 1:
+            if encoded_board[col, row, 0] == 1:
                 piece = chess.Piece(chess.PAWN, chess.WHITE)
-            elif encoded_board[6, col, row] == 1:
+            elif encoded_board[col, row, 6] == 1:
                 piece = chess.Piece(chess.PAWN, chess.BLACK)
-            elif encoded_board[1, col, row] == 1:
+            elif encoded_board[col, row, 1] == 1:
                 piece = chess.Piece(chess.KNIGHT, chess.WHITE)
-            elif encoded_board[7, col, row] == 1:
+            elif encoded_board[col, row, 7] == 1:
                 piece = chess.Piece(chess.KNIGHT, chess.BLACK)
-            elif encoded_board[2, col, row] == 1:
+            elif encoded_board[col, row, 2] == 1:
                 piece = chess.Piece(chess.BISHOP, chess.WHITE)
-            elif encoded_board[8, col, row] == 1:
+            elif encoded_board[col, row, 8] == 1:
                 piece = chess.Piece(chess.BISHOP, chess.BLACK)
-            elif encoded_board[3, col, row] == 1:
+            elif encoded_board[col, row, 3] == 1:
                 piece = chess.Piece(chess.ROOK, chess.WHITE)
-            elif encoded_board[9, col, row] == 1:
+            elif encoded_board[col, row, 9] == 1:
                 piece = chess.Piece(chess.ROOK, chess.BLACK)
-            elif encoded_board[4, col, row] == 1:
+            elif encoded_board[col, row, 4] == 1:
                 piece = chess.Piece(chess.QUEEN, chess.WHITE)
-            elif encoded_board[10, col, row] == 1:
+            elif encoded_board[col, row, 10] == 1:
                 piece = chess.Piece(chess.QUEEN, chess.BLACK)
-            elif encoded_board[5, col, row] == 1:
+            elif encoded_board[col, row, 5] == 1:
                 piece = chess.Piece(chess.KING, chess.WHITE)
-            elif encoded_board[11, col, row] == 1:
+            elif encoded_board[col, row, 11] == 1:
                 piece = chess.Piece(chess.KING, chess.BLACK)
             board.set_piece_at(square, piece)
     return board
@@ -127,20 +127,19 @@ def load_labels():
 
 def _parse_example(example_proto):
     features = {
-        "board/sixlayer": tf.FixedLenFeature([768], tf.float32),
+        "board/bitboard": tf.FixedLenFeature([768], tf.float32),
         "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64),
         "game/result": tf.FixedLenFeature((), tf.int64)
     }
     if FLAGS.disable_cp == "false":
-        features["board/cp_score/"] = tf.FixedLenFeature((), tf.int64)
+        features["board/cp_score"] = tf.FixedLenFeature((), tf.float32)
 
     parsed_features = tf.parse_single_example(example_proto, features)
-    #cp_score = parsed_features["board/cp_score/"] if FLAGS.disable_cp == "false" else 0
-    #cp_score = tf.cast(cp_score, tf.float32)
-    board = tf.reshape(parsed_features["board/sixlayer"], (12, 8, 8))
+    cp_score = parsed_features["board/cp_score"] if FLAGS.disable_cp == "false" else 0.0
+    board = tf.reshape(parsed_features["board/bitboard"], (12, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"]
+    return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"], cp_score
 
 def inputs(filenames, shuffle=True):
     dataset = tf.contrib.data.TFRecordDataset(filenames)

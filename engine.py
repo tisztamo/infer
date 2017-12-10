@@ -12,7 +12,7 @@ tf.app.flags.DEFINE_string('use_back_engine', 'true',
                            'Whether to use external engine for static (leaf) evaluation')
 tf.app.flags.DEFINE_string('back_engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64_modern',
                            'External engine executable')
-tf.app.flags.DEFINE_string('back_engine_depth', '6',
+tf.app.flags.DEFINE_string('back_engine_depth', '12',
                            'External engine search depth')
 tf.app.flags.DEFINE_string('search_depth', '3',
                            'Search depth')
@@ -282,8 +282,8 @@ class Engine:
         self.eval_count = 0
         ts=time.time()
         static_move, pre_score, static_ponder = self.evaluate(board)
-        #move = self.beam_search(board, depth=1, try_move=None)
-        move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
+        move = self.beam_search(board, depth=1, try_move=None)
+        #move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
         logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder) + " prob: " + str(move.probability) + " appeal: " + str(move.appeal))
         print(self.eval_count, "nodes, nps:", float(self.eval_count) / (time.time() - ts))
         return move
