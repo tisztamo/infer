@@ -5,11 +5,11 @@ import tensorflow as tf
 import tensorflow.contrib
 import input
 import model
-from experiments.evaluate import siamese_model 
+from experiments.evaluate import siamese_model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.01
+START_LEARNING_RATE = 0.005
 
 def create_iterator(data_dir, mask="*"):
     train_filenames = input.find_files(data_dir, "train*")
@@ -42,19 +42,15 @@ score_diff = ww_scores - bw_scores
 move_vars = tf.trainable_variables()
 move_saver = tf.train.Saver(save_relative_paths=True, var_list=move_vars)
 
-with tf.variable_scope("siamese"):
-    double_feature_shape = [features.shape[0], features.shape[1] + features.shape[1]]
-    siamese_input = tf.placeholder(tf.float32, shape=double_feature_shape)
-    predicted_score_diff, trainables = siamese_model.score_diff_predictor(siamese_input)
-    predicted_score_diff = 1500.0 * tf.squeeze(predicted_score_diff)
 
-siamese_saver = tf.train.Saver(save_relative_paths=True, var_list=trainables)
+siamese_input, predicted_score_diff, trainables = siamese_model.score_diff_predictor(features.shape)
+predicted_score_diff = 1500.0 * tf.squeeze(predicted_score_diff)
 
 # Losses
 gt_score_diff = tf.placeholder(tf.float32, score_diff.shape)
-#score_loss = tf.abs(tf.tanh((gt_score_diff - predicted_score_diff) / 100.0 ))#tf.losses.absolute_difference(gt_score_diff, predicted_score_diff)
-#tf.losses.add_loss(score_loss)
-score_loss = tf.losses.absolute_difference(predicted_score_diff, gt_score_diff)
+score_loss = (1.0 - tf.abs(tf.tanh(gt_score_diff / 800.0))) * tf.abs(gt_score_diff - predicted_score_diff)#tf.losses.absolute_difference(gt_score_diff, predicted_score_diff)
+tf.losses.add_loss(score_loss)
+#score_loss = tf.losses.absolute_difference(predicted_score_diff, gt_score_diff)
 loss = tf.losses.get_total_loss()
 
 
@@ -63,6 +59,10 @@ global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
                                            800, 0.99, staircase=True)
 training_op = tf.train.AdagradOptimizer(learning_rate).minimize(loss, global_step=global_step, var_list=trainables)
+
+
+trainables.append(global_step)
+siamese_saver = tf.train.Saver(save_relative_paths=True, keep_checkpoint_every_n_hours=2, var_list=trainables)
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
@@ -80,12 +80,14 @@ with tf.Session(config=config) as sess:
     checkpoint = tf.train.get_checkpoint_state(FLAGS.logdir + "/siamese/")
     if checkpoint and checkpoint.model_checkpoint_path:
         siamese_saver.restore(sess, checkpoint.model_checkpoint_path)
-        print ("Successfully loaded siamese net:", checkpoint.model_checkpoint_path)
+        print("Successfully loaded siamese net:", checkpoint.model_checkpoint_path)
+    else:
+        print("No siamese checkpoint found.")
 
     sess.run([ww_init, bw_init], feed_dict={ww_filenames_op: ww_filenames, bw_filenames_op: bw_filenames})
 
     l = 0
-    BATCH_PER_PRINT=50
+    BATCH_PER_PRINT=20
     avg_loss = None
     while True:
         ts = time.time()

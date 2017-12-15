@@ -3,8 +3,6 @@ import random
 import chess, chess.uci
 import tensorflow as tf
 import numpy as np
-import log
-import input, inference, strength
 
 tf.app.flags.DEFINE_string('play_first_intuition', 'false',
                            'Play the raw output of the policy network')
@@ -14,8 +12,10 @@ tf.app.flags.DEFINE_string('back_engine_exe', '../stockfish-8-linux/Linux/stockf
                            'External engine executable')
 tf.app.flags.DEFINE_string('back_engine_depth', '12',
                            'External engine search depth')
-tf.app.flags.DEFINE_string('search_depth', '3',
+tf.app.flags.DEFINE_string('search_depth', '5',
                            'Search depth')
+import log
+import input, inference, strength
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -24,7 +24,7 @@ logger = log.getLogger("engine")
 ENGINE_NAME="Turk Development"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BEAM_SIZES = [0, 12, 12, 12, 12, 12, 12]
+BEAM_SIZES = [0, 5, 5, 10, 10, 10, 10]
 MAX_BLUNDER = 250
 EVAL_RANDOMNESS = 10
 STALEMATE_SCORE = -20 #For White
@@ -92,8 +92,9 @@ class Engine:
     def evaluateStatic(self, board, back_engine_depth=None):
         """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
         if FLAGS.use_back_engine == "false":
-            predicted_result = inference.predict_result(board)
-            score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
+            score = inference.predict_eval(board)
+            #predicted_result = inference.predict_result(board)
+            #score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
             return None, score, None
         else:
             if back_engine_depth is None:
@@ -271,7 +272,7 @@ class Engine:
             return CandidateMove(self, move, 0.0, score, ponder)
         if depth == 1:
             #self.print_candidate_moves(candidates)
-            print(best.appeal, best.probability, max_score - best.cp_score)
+            #print(best.appeal, best.probability, max_score - best.cp_score)
             pass
         return best
 
@@ -282,7 +283,7 @@ class Engine:
         self.eval_count = 0
         ts=time.time()
         static_move, pre_score, static_ponder = self.evaluate(board)
-        move = self.beam_search(board, depth=1, try_move=None)
+        move = self.beam_search(board, depth=4, try_move=None)
         #move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
         logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder) + " prob: " + str(move.probability) + " appeal: " + str(move.appeal))
         print(self.eval_count, "nodes, nps:", float(self.eval_count) / (time.time() - ts))

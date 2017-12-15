@@ -37,7 +37,7 @@ def summary(var):
 
 
 def weight_variable(shape):
-    initial = tf.truncated_normal(shape, stddev=0.3)
+    initial = tf.truncated_normal(shape, stddev=0.04)
     return tf.Variable(initial)
 
 def bias_variable(shape):
@@ -65,7 +65,7 @@ def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], layers_o
         W = weight_variable([int(h_input.shape[1]), layer_size])
         #b = bias_variable([layer_size])
         linear = tf.matmul(h_input, W)# + b
-        pre_activation = slim.batch_norm(linear, activation_fn=None)
+        #pre_activation = slim.batch_norm(linear, activation_fn=None)
         pre_activation = linear
         if use_tanh_at_end and idx == len(hidden_layer_sizes) - 1:
             prev_output = tf.nn.tanh(pre_activation)

@@ -17,6 +17,11 @@ tf.app.flags.DEFINE_string('repeat_dataset', 'false',
 tf.app.flags.DEFINE_string('gpu', 'true',
                            'Use the GPU')
 
+tf.app.flags.DEFINE_string('predict_result', 'false',
+                           'Load the result prediction module')
+tf.app.flags.DEFINE_string('siamese_eval', 'true',
+                           'Load the siamese evaluation module')
+
 FLAGS = tf.app.flags.FLAGS
 BATCH_SIZE = 128
 MATE_CP_SCORE = 20000

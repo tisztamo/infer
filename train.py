@@ -8,7 +8,7 @@ import model
 
 FLAGS = tf.app.flags.FLAGS
 
-START_LEARNING_RATE = 0.001
+START_LEARNING_RATE = 0.005
 
 # Inputs
 train_filenames = input.find_files(FLAGS.data_dir, "train-*")

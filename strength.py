@@ -3,7 +3,7 @@ import log
 
 logger = log.getLogger("engine.strength")
 
-DOUBLE_PROB_ACCOUNTS_FOR_CP = 900
+DOUBLE_PROB_ACCOUNTS_FOR_CP = 200
 
 class StrengthManager:
     def __init__(self, engine_):
