@@ -5,20 +5,21 @@ import tensorflow as tf
 import tensorflow.contrib
 import input
 import model
+import flags
 
-FLAGS = tf.app.flags.FLAGS
+FLAGS = flags.FLAGS
 
-START_LEARNING_RATE = 0.005
+START_LEARNING_RATE = 0.01
 
 # Inputs
-train_filenames = input.find_files(FLAGS.data_dir, "train-otb*")
+train_filenames = input.find_files(FLAGS.data_dir, "train-*")
 print("Found", len(train_filenames), "train files.")
 random.shuffle(train_filenames)
 
 filenames = tf.placeholder(tf.string, shape=[None])
 dataset = input.inputs(filenames)
 
-iterator = tf.contrib.data.Iterator.from_structure(dataset.output_types,
+iterator = tf.data.Iterator.from_structure(dataset.output_types,
                                    dataset.output_shapes)
 
 training_init_op = iterator.make_initializer(dataset)
@@ -31,17 +32,17 @@ results_onehot = tf.one_hot(results + 1, 3, dtype=tf.float32)
 # Model
 features = model.feature_extractor(examples)
 logits = model.policy_model(examples, features)
-result_logits = model.result_model(examples, features)
+#result_logits = model.result_model(examples, features)
 
 # Losses
 policy_loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
-result_loss = tf.losses.softmax_cross_entropy(logits=result_logits, onehot_labels=results_onehot, weights=2)
+#result_loss = tf.losses.softmax_cross_entropy(logits=result_logits, onehot_labels=results_onehot, weights=2)
 loss = tf.losses.get_total_loss()
 
 #Training
 global_step = tf.Variable(0, name='global_step', trainable=False)
 learning_rate = tf.train.exponential_decay(START_LEARNING_RATE, global_step,
-                                           800, 0.99, staircase=True)
+                                           1000, 0.995, staircase=True)
 #Adagrad volt eredetileg!
 training_op = tf.train.MomentumOptimizer(learning_rate, 0.9).minimize(loss, global_step=global_step)
 
@@ -65,8 +66,10 @@ with tf.Session(config=config) as sess:
     BATCH_PER_PRINT=10
     while True:
         ts = time.time()
+
+        result_l = 0
         for i in range(BATCH_PER_PRINT):
-            _, policy_l, result_l, l, step, lrate = sess.run([training_op, policy_loss, result_loss, loss, global_step, learning_rate])
+            _, policy_l, l, step, lrate = sess.run([training_op, policy_loss, loss, global_step, learning_rate])
         elapsed = time.time() -ts
     
         print("Loss at batch %d: %.2f + %.2f = %.2f, speed: %.1f examples/s, lr: %.7f" % (step, policy_l, result_l, l, BATCH_PER_PRINT * input.BATCH_SIZE / elapsed, lrate))

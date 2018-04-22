@@ -10,8 +10,8 @@ model_impl = None
 def get_model_impl():
     global model_impl
     if model_impl is None:
-        #model_impl = cnn_model.CNNModel()
-        model_impl = residual_model.ResidualModel()
+        model_impl = cnn_model.CNNModel()
+        #model_impl = residual_model.ResidualModel()
     return model_impl
 
 def feature_extractor(data):

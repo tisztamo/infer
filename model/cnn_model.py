@@ -18,7 +18,9 @@ class CNNModel:
         h_conv3 = extractor_layer(input3, 32, 512, 64, 32)
         input4 = tf.concat([input, h_conv1, h_conv3], axis=3)
         h_conv4 = extractor_layer(input4, 32, 768, 0, 0)
-        input5 = tf.concat([input, h_conv1, h_conv4], axis=3)
+        input4b = tf.concat([input, h_conv1, h_conv4], axis=3)
+        h_conv4b = extractor_layer(input4b, 32, 896, 0, 0)
+        input5 = tf.concat([input, h_conv1, h_conv4b], axis=3)
         h_conv5 = extractor_layer(input5, 32, 1024, 0, 0)
         input6 = tf.concat([input,h_conv1, h_conv5], axis=3)
         h_conv6 = extractor_layer(input6, 32, 1024 + 256, 0, 0)
@@ -27,11 +29,11 @@ class CNNModel:
 
         return h_flat
 
-    def policy_model(self, data, feature_tensor):
-        return base.model_head(data, feature_tensor, [2048, 2048, model.NUM_LABELS])
+    def policy_model(self, data, feature_tensor, layers_out):
+        return base.model_head(data, feature_tensor, [2048, 2048, model.NUM_LABELS], layers_out)
 
-    def result_model(self, data, feature_tensor):
-        return base.model_head(data, feature_tensor, [2048, 2048, 3])
+    def result_model(self, data, feature_tensor, layers_out):
+        return base.model_head(data, feature_tensor, [2048, 2048, 3], layers_out)
 
 
 def conv2d(x, W, stride):

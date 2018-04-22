@@ -3,27 +3,15 @@ import tensorflow as tf
 import tensorflow.contrib
 import numpy as np
 import chess
+import flags
 
-tf.app.flags.DEFINE_string('data_dir', '/mnt/red/train/humanlike/preprocessed/',
-                           'Preprocessed training data directory')
-tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
-                           'List of all labels (uci move notation)')
-tf.app.flags.DEFINE_string('logdir', '/mnt/red/train/humanlike/logdir/residual',
-                           'Directory to store network parameters and training logs')
-tf.app.flags.DEFINE_string('disable_cp', 'true',
-                           'Do not load of cp_score field from the tfrecord data files')
-tf.app.flags.DEFINE_string('repeat_dataset', 'false',
-                           'Repeat input dataset indefinitely')
-tf.app.flags.DEFINE_string('gpu', 'true',
-                           'Use the GPU')
-
-FLAGS = tf.app.flags.FLAGS
-BATCH_SIZE = 128
+FLAGS = flags.FLAGS
+BATCH_SIZE = 256
 MATE_CP_SCORE = 20000
 
-if FLAGS.gpu == "true":
-    device = None
-else:
+device = None
+
+if FLAGS.gpu != "true":
     device = "/cpu:0"
 
 def find_files(directory, pattern):
@@ -78,29 +66,30 @@ def decode_board(encoded_board):
         for row in range(0, 8):
             square = chess.square(col, row)
             piece = None
-            if encoded_board[0, col, row] == 1:
-                piece = chess.Piece(chess.PAWN, chess.WHITE)
-            elif encoded_board[6, col, row] == 1:
-                piece = chess.Piece(chess.PAWN, chess.BLACK)
-            elif encoded_board[1, col, row] == 1:
-                piece = chess.Piece(chess.KNIGHT, chess.WHITE)
-            elif encoded_board[7, col, row] == 1:
-                piece = chess.Piece(chess.KNIGHT, chess.BLACK)
-            elif encoded_board[2, col, row] == 1:
-                piece = chess.Piece(chess.BISHOP, chess.WHITE)
-            elif encoded_board[8, col, row] == 1:
-                piece = chess.Piece(chess.BISHOP, chess.BLACK)
-            elif encoded_board[3, col, row] == 1:
-                piece = chess.Piece(chess.ROOK, chess.WHITE)
-            elif encoded_board[9, col, row] == 1:
-                piece = chess.Piece(chess.ROOK, chess.BLACK)
-            elif encoded_board[4, col, row] == 1:
-                piece = chess.Piece(chess.QUEEN, chess.WHITE)
-            elif encoded_board[10, col, row] == 1:
-                piece = chess.Piece(chess.QUEEN, chess.BLACK)
-            elif encoded_board[5, col, row] == 1:
-                piece = chess.Piece(chess.KING, chess.WHITE)
-            elif encoded_board[11, col, row] == 1:
+
+            if encoded_board[col, row, 0] >= 0.5:
+                 piece = chess.Piece(chess.PAWN, chess.WHITE)
+            elif encoded_board[col, row, 6] >= 0.5:
+                 piece = chess.Piece(chess.PAWN, chess.BLACK)
+            elif encoded_board[col, row, 1] >= 0.5:
+                 piece = chess.Piece(chess.KNIGHT, chess.WHITE)
+            elif encoded_board[col, row, 7] >= 0.5:
+                 piece = chess.Piece(chess.KNIGHT, chess.BLACK)
+            elif encoded_board[col, row, 2] >= 0.5:
+                 piece = chess.Piece(chess.BISHOP, chess.WHITE)
+            elif encoded_board[col, row, 8] >= 0.5:
+                 piece = chess.Piece(chess.BISHOP, chess.BLACK)
+            elif encoded_board[col, row, 3] >= 0.5:
+                 piece = chess.Piece(chess.ROOK, chess.WHITE)
+            elif encoded_board[col, row, 9] >= 0.5:
+                 piece = chess.Piece(chess.ROOK, chess.BLACK)
+            elif encoded_board[col, row, 4] >= 0.5:
+                 piece = chess.Piece(chess.QUEEN, chess.WHITE)
+            elif encoded_board[col, row, 10] >= 0.5:
+                 piece = chess.Piece(chess.QUEEN, chess.BLACK)
+            elif encoded_board[col, row, 5] >= 0.5:
+                 piece = chess.Piece(chess.KING, chess.WHITE)
+            elif encoded_board[col, row, 11] >= 0.5:
                 piece = chess.Piece(chess.KING, chess.BLACK)
             board.set_piece_at(square, piece)
     return board
@@ -127,7 +116,7 @@ def load_labels():
 
 def _parse_example(example_proto):
     features = {
-        "board/sixlayer": tf.FixedLenFeature([768], tf.float32),
+        "board/twelvelayer": tf.FixedLenFeature([768], tf.float32),
         "move/player": tf.FixedLenFeature((), tf.int64),
         "move/label": tf.FixedLenFeature((), tf.int64),
         "game/result": tf.FixedLenFeature((), tf.int64)
@@ -138,12 +127,12 @@ def _parse_example(example_proto):
     parsed_features = tf.parse_single_example(example_proto, features)
     #cp_score = parsed_features["board/cp_score/"] if FLAGS.disable_cp == "false" else 0
     #cp_score = tf.cast(cp_score, tf.float32)
-    board = tf.reshape(parsed_features["board/sixlayer"], (12, 8, 8))
+    board = tf.reshape(parsed_features["board/twelvelayer"], (12, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
     return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"]
 
 def inputs(filenames, shuffle=True):
-    dataset = tf.contrib.data.TFRecordDataset(filenames)
+    dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_example)
     if shuffle:
         dataset = dataset.shuffle(buffer_size=50000)

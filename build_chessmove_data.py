@@ -14,26 +14,9 @@ import chess.pgn
 import chess.uci
 import log
 
-import input, engine
+import flags, input, engine
 
-tf.app.flags.DEFINE_string('train_dir', '../data/train/',
-                           'Training data directory')
-tf.app.flags.DEFINE_string('validation_dir', '../data/validation/',
-                           'Validation data directory')
-tf.app.flags.DEFINE_string('output_dir', '../data/',
-                           'Output data directory')
-tf.app.flags.DEFINE_string('eval_depth', '0',
-                           'Depth to eval position using the external engine')
-tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
-                           'UCI engine executable')
-tf.app.flags.DEFINE_string('skip_games', '0',
-                           'Skip the first N games')
-tf.app.flags.DEFINE_string('filter_player', '',
-                           'Process only moves of the given player, or omit the player if the option starts with "-"')
-tf.app.flags.DEFINE_string('omit_draws', 'true',
-                           'Omit games that ended in a draw')
-
-FLAGS = tf.app.flags.FLAGS
+FLAGS = flags.FLAGS
 labels = []
 
 class InfoHandler(chess.uci.InfoHandler):
@@ -160,7 +143,7 @@ def _bytes_feature(value):
 
 def _convert_to_example(board, move, game, cp_score, complexity, best_move, player):
     game_headers = game.headers
-    sixlayer_rep = input.encode_board(board)
+    layer_rep = input.encode_board(board)
     move_uci = move.uci()
     result = game_headers["Result"]
     result_code = 0
@@ -181,7 +164,7 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move, play
 
 
     feature_desc = {
-        'board/sixlayer': tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(sixlayer_rep))),
+        'board/twelvelayer': tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(layer_rep))),
         'board/fen': _bytes_feature(tf.compat.as_bytes(board.fen())),
         #'board/complexity': _int64_feature(complexity),
         #'board/best_uci': _bytes_feature(tf.compat.as_bytes(best_move.uci())),
