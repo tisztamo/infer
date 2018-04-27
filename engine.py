@@ -11,15 +11,15 @@ FLAGS = flags.FLAGS
 
 logger = log.getLogger("engine")
 
-ENGINE_NAME="Turk Development"
+ENGINE_NAME="Infer Development"
 MATE_VAL =  20000 #-1000 for every move down to 10000 where it stops. If mate is further than 10 plies, score is 10000
 
-BEAM_SIZES = [0, 12, 12, 12, 12, 12, 12]
-MAX_BLUNDER = 250
-EVAL_RANDOMNESS = 10
+EVAL_RANDOMNESS = 0
 STALEMATE_SCORE = -20 #For White
 
-BACK_ENGINE_THREADS = 4
+BACK_ENGINE_THREADS = 1
+TIME_PER_INFER = 150
+policy_bias_cp = 0
 
 label_strings, _ = input.load_labels()
 
@@ -51,11 +51,13 @@ class CandidateMove:
 class Engine:
     def __init__(self):
         self.back_engine = None
-        self.try_move = None
         self.current_board = chess.Board()
         self.newGame()
         self.name = ENGINE_NAME
         self.strengthManager = strength.StrengthManager(self)
+        self.my_time = 0
+        self.opponent_time = 0
+        self.movestogo = 0
 
     @staticmethod
     def cp_score(uci_score_or_res_pred):
@@ -79,17 +81,28 @@ class Engine:
         self.back_engine.setoption({"Threads": BACK_ENGINE_THREADS})
         logger.info("Opened back-engine " + self.back_engine.name)
 
-    def evaluateStatic(self, board, back_engine_depth=None):
+    def get_times(self, board, my_side, time_proportion):
+        if my_side is None:
+            my_side = board.turn
+        if my_side == chess.WHITE:
+            wtime = self.my_time * time_proportion
+            btime = self.opponent_time * time_proportion
+        else:
+            wtime = self.opponent_time * time_proportion
+            btime = self.my_time * time_proportion
+        return wtime, btime
+
+    def evaluateStatic(self, board, time_proportion, my_side, back_engine_depth):
         """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
         if FLAGS.use_back_engine == "false":
             predicted_result = inference.predict_result(board)
             score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
             return None, score, None
         else:
-            if back_engine_depth is None:
-                back_engine_depth = FLAGS.back_engine_depth
             self.back_engine.position(board.copy())
-            move, ponder = self.back_engine.go(depth=back_engine_depth)
+            wtime, btime = self.get_times(board, my_side, time_proportion)
+            logger.info("back engine eval on " + board.fen() + ", wtime=" + str(wtime) + ", btime=" + str(btime))
+            move, ponder = self.back_engine.go(depth=back_engine_depth, movestogo=self.movestogo, wtime=wtime, btime=btime)
             score = self.info_handler.info["score"][1]
             if score.cp is not None:
                 score = chess.uci.Score(score.cp + random.randint(-EVAL_RANDOMNESS, EVAL_RANDOMNESS), None)
@@ -97,13 +110,15 @@ class Engine:
                 move = move.uci()
             if ponder is not None:
                 ponder = ponder.uci()
+            if move is None:
+                logger.error("Got None from back engine!")
             return move, score, ponder
 
-    def evaluate(self, board, back_engine_depth=None):
+    def evaluate(self, board, time_proportion = 0.55, my_side=None, back_engine_depth=None):
         """Calculates the value in centipawns of the board
          relative to the side to move"""
         self.eval_count += 1
-        if board.is_game_over(True):
+        if board.is_game_over(False):
             if board.is_checkmate():
                 if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
                     score = MATE_VAL
@@ -112,176 +127,70 @@ class Engine:
             else:
                 score = STALEMATE_SCORE if board.turn == chess.WHITE else -STALEMATE_SCORE
             return None, score, None
-        move, score, ponder = self.evaluateStatic(board, back_engine_depth)
+        move, score, ponder = self.evaluateStatic(board, time_proportion, my_side, back_engine_depth)
         return move, self.cp_score(score), ponder
 
-    def candidate_idxs(self, board, try_move=None):
+    def candidate_idxs(self, board):
         predictions = inference.predict_move(board.fen())
         candidates = np.argpartition(predictions, -20)[-20:]
         candidates = candidates[np.argsort(-predictions[candidates])]
-        if try_move is not None:
-            trymove_idx = label_strings.index(try_move)
-            found = np.where(candidates==trymove_idx)
-            candidates = np.delete(candidates, found)
-            candidates = np.insert(candidates, 0, [trymove_idx])
         return candidates, predictions[candidates]
 
-    def candidates(self, board, try_move=None):
-        moves, probs = self.candidate_idxs(board, try_move)
+    def candidates(self, board):
+        moves, probs = self.candidate_idxs(board)
         retval = [CandidateMove(self, label_strings[move], probs[idx]) for idx, move in enumerate(moves)]
         return retval
 
-    def alpha_beta_search(self, board, depth, alpha, beta, max_min=1):
-        if board.is_game_over(claim_draw=True):
-            if board.is_checkmate():
-                if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
-                    score = MATE_VAL * max_min
-                else:
-                    score = -MATE_VAL * max_min
-            else:
-                score = STALEMATE_SCORE * max_min
-            return CandidateMove(self, None, None, score)
-        if depth == 0:
-            move, score, ponder = self.evaluate(board)
-            return CandidateMove(self, move, None, score * max_min, ponder)
-        beam_size = BEAM_SIZES[depth]
-        candidates = self.candidates(board)
-        move_counter = 0
-        selected_candidate = None
-        for candidate in candidates:
-            if move_counter == 0:
-                selected_candidate = candidate
-            move_counter += 1
-            if move_counter >= beam_size or candidate.probability < 0.5:
-                break
-            move = candidate.uci
-            try:
-                board.push_uci(move)
-            except:
-                #logger.debug("Illegal move: " + str(move))
-                continue
-        
-            ponder_candidate = self.alpha_beta_search(board, depth - 1, alpha, beta, -max_min)
-            #print(ponder_candidate)
-            board.pop()
+    def policyCandidate(self, board):
+        preds = inference.predict_move(board.fen())
+        argmax = np.argmax(preds, 0)
+        return CandidateMove(self, inference.label_strings[argmax], preds[argmax])
 
-            score = ponder_candidate.cp_score                
-            if score is None:
-                print("YYYYY")
-                candidate.score = max_min * MATE_VAL
-                return candidate
-            candidate.set_cp_score(score)
-            candidate.ponder = ponder_candidate.uci
-            candidate.ponder_ponder = ponder_candidate.ponder
-            
-            if max_min == 1:
-                if score >= beta:
-                    candidate.set_cp_score(beta)
-                    #print(depth, "Beta cutoff after ", move_counter, candidate.uci)
-                    return candidate #fail hard beta-cutoff
-                if score > alpha:
-                    #print(candidate.uci, score, alpha)
-                    alpha = score #alpha acts like max in MiniMax
-                    selected_candidate = candidate
-            else:
-                if score <= alpha:
-                    candidate.set_cp_score(alpha)
-                    #print(depth, "Alpha cutoff after ", move_counter, candidate.uci)
-                    return candidate
-                if score < beta:
-                    beta = score
-                    selected_candidate = candidate
-
-
-        if selected_candidate.cp_score is None:
-            print("Selected candidate's cp score is None")
-            print(board)
-            print(depth, selected_candidate)
-            for move in board.legal_moves:
-                if move.uci() == selected_candidate.uci:
-                    return selected_candidate
-            return CandidateMove(self, move.uci(), None, None)
-
-        return selected_candidate
-        
-
-    def beam_search(self, board, depth=1, try_move=None):
-        STALEMATE = -100000 #Smaller than the smallest possible score
-        if board.is_checkmate():
-            if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
-                score = MATE_VAL
-            else:
-                score = -MATE_VAL
-            return CandidateMove(self, None, None, score)
-
-        if depth == 0:
-            move, score, ponder = self.evaluate(board)
-            return CandidateMove(self, move, None, score, ponder)
-        beam_size = BEAM_SIZES[depth]
-        candidates = self.candidates(board, try_move)
-        move_counter = 0
-        for candidate in candidates:
-            move = candidate.uci
-            try:
-                board.push_uci(move)
-            except:
-                #logger.debug("Illegal move: " + str(move))
-                continue
-
-            ponder_candidate = self.beam_search(board, depth - 1)
-            score = STALEMATE_SCORE if ponder_candidate.cp_score == STALEMATE else -ponder_candidate.cp_score - 1
-            candidate.set_cp_score(score)
-            candidate.ponder = ponder_candidate.uci
-            candidate.ponder_ponder = ponder_candidate.ponder
-
-            board.pop()
-            move_counter += 1
-            if move_counter >= beam_size:
-                break
-
-        try:
-            searched_candidates = [c for c in candidates if c.cp_score is not None]
-            max_score = max([c.cp_score for c in searched_candidates])
-            accepted_candidates = [c for c in searched_candidates if c.cp_score > max_score - MAX_BLUNDER]
-        except:
-            max_score = -MATE_VAL
-            accepted_candidates = []
-        best = None
-        best_appeal = -100000
-        for candidate in accepted_candidates:
-            candidate.calculate_appeal(max_score)
-            if candidate.appeal > best_appeal:
-                best = candidate
-                best_appeal = candidate.appeal
-
-        if best is None:
-            logger.error("No candidate found for " + board.fen())
-            self.print_candidate_moves(candidates)
-            move, score, ponder = self.evaluate(board)
-            return CandidateMove(self, move, 0.0, score, ponder)
-        if depth == 1:
-            #self.print_candidate_moves(candidates)
-            print(best.appeal, best.probability, max_score - best.cp_score)
-            pass
-        return best
-
-
-    def bestMove(self, board, try_move):
+    def bestMove(self, board):
         """Returns the best move in UCI notation, the value of the board after that move, the ponder move and my anticipated nex move (ponderponder)"""
         board = board.copy()
         self.eval_count = 0
         ts=time.time()
-        static_move, pre_score, static_ponder = self.evaluate(board)
-        #move = self.beam_search(board, depth=1, try_move=None)
-        move = self.alpha_beta_search(board, int(FLAGS.search_depth), -math.inf, math.inf)
-        logger.info(str(move.uci) + ": from " + str(pre_score) + " to " + str(move.cp_score) + " ponder " + str(move.ponder) + " ponderponder " + str(move.ponder_ponder) + " prob: " + str(move.probability) + " appeal: " + str(move.appeal))
-        print(self.eval_count, "nodes, nps:", float(self.eval_count) / (time.time() - ts))
-        return move
+        back_engine_uci, pre_score, static_ponder = self.evaluate(board)
+        policy_move = self.policyCandidate(board)
+        selected_move = CandidateMove(self, back_engine_uci, 0)
+        if policy_move.uci != back_engine_uci:
+            board.push_uci(policy_move.uci)
+            _, post_score, _2 = self.evaluate(board, my_side = board.turn)
+            post_score = -post_score
+            logger.info("Back engine: " + str(back_engine_uci) + "(" + str(pre_score) + "), policy: " + policy_move.uci + "(" + str(post_score) + ")")
+            if (pre_score < post_score + random.randint(int(0.7 * policy_bias_cp), int(1.3 * policy_bias_cp))):
+                selected_move = policy_move
+                logger.info("Preferring policy move.")
+
+        logger.info("Selected move: " + str(selected_move.uci))
+        return selected_move
 
     def newGame(self):
         self.current_board = chess.Board()
 
-    def move(self, board):
+    def parse_uciparams(self, params):
+        my_color = self.current_board.turn
+
+        if "wtime" in params:
+            wtime = int(params["wtime"])
+            btime = int(params["btime"])
+            if my_color == chess.WHITE:
+                self.my_time, self.opponent_time = wtime, btime
+            else:
+                self.my_time, self.opponent_time = btime, wtime
+
+        if "movestogo" in params:
+            self.movestogo = int(params["movestogo"])
+            self.my_time = self.my_time - self.movestogo * TIME_PER_INFER
+            if self.my_time < 1:
+                logger.error("Not enough time, adjust TIME_PER_INFER!")
+                self.my_time = 1
+        else:
+            self.movestogo = None
+
+
+    def move(self, board, params):
         if board.fullmove_number > 1 and len(board.move_stack) > 0:
             last_move = board.peek()
             self.current_board.push(last_move)
@@ -290,6 +199,9 @@ class Engine:
                 logger.error("Incosistent board, dropping the old one " + self.current_board.fen() + " for " + board.fen())
             self.current_board = board.copy()
 
+        if params is not None:
+            self.parse_uciparams(params)
+
         self.color = self.current_board.turn
 
         if FLAGS.play_first_intuition != "false":
@@ -297,13 +209,12 @@ class Engine:
             self.print_candidate_moves(candidates)
             move = candidates[0]
         else:
-            move = self.bestMove(board, self.try_move)
-        self.try_move = move.ponder_ponder
+            move = self.bestMove(board)
         if move.uci is not None:
             try:
                 self.current_board.push_uci(move.uci)
             except:
-                logger.error("Illegal move generated", str(move))
+                logger.error("Illegal move generated: " + str(move))
                 move.uci = list(self.current_board.legal_moves)[0].uci()
         return move
 
@@ -321,6 +232,7 @@ class Engine:
 
 def main(unused_argv):
     e = Engine()
+    e.initBackEngine()
     b = chess.Board()
     move = e.move(b)
     logger.info("Best move:" + str(move.uci) + "(" + str(move.cp_score) + ") ponder " + str(move.ponder))

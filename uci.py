@@ -50,9 +50,23 @@ def parse_position(line):
             pgn_writer.move(move)
     print(board.fen())
 
+#go wtime 39360 btime 38640 movestogo 34
+def parse_go(line):
+    logger.info(line)
+    params = {}
+    words = line.split(" ")
+    key = None
+    for word in words[1:]:
+        if key is None:
+            key = word
+        else:
+            params[key] = word
+            key = None
+    return params
 
 def handle_go(line):
-    move = turk.move(board)
+    params = parse_go(line)
+    move = turk.move(board, params)
     pgn_writer.move(move)
     ponder = move.ponder if move.ponder is not None else "a1a2"
     return "bestmove " + str(move.uci) + " ponder " + str(ponder)
