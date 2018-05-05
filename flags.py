@@ -6,7 +6,7 @@ tf.app.flags.DEFINE_string('labels_file', 'labels.txt',
                            'List of all labels (uci move notation)')
 tf.app.flags.DEFINE_string('logdir', '/mnt/red/inferdata/logdir',
                            'Directory to store network parameters and training logs')
-tf.app.flags.DEFINE_string('disable_cp', 'true',
+tf.app.flags.DEFINE_string('disable_cp', 'false',
                            'Do not load of cp_score field from the tfrecord data files')
 tf.app.flags.DEFINE_string('repeat_dataset', 'false',
                            'Repeat input dataset indefinitely')
@@ -17,9 +17,7 @@ tf.app.flags.DEFINE_string('train_dir', '../data/train/',
                            'Training data directory')
 tf.app.flags.DEFINE_string('validation_dir', '../data/validation/',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('output_dir', '../data/',
-                           'Output data directory')
-tf.app.flags.DEFINE_string('eval_depth', '0',
+tf.app.flags.DEFINE_string('eval_depth', '10',
                            'Depth to eval position using the external engine')
 tf.app.flags.DEFINE_string('engine_exe', '../stockfish-8-linux/Linux/stockfish_8_x64',
                            'UCI engine executable')
@@ -27,6 +25,8 @@ tf.app.flags.DEFINE_string('skip_games', '0',
                            'Skip the first N games')
 tf.app.flags.DEFINE_string('filter_player', '',
                            'Process only moves of the given player, or omit the player if the option starts with "-"')
+tf.app.flags.DEFINE_string('prune_opening', 'true',
+                           'Drop opening moves randomly to lower bias caused by repeating opening boards')                           
 tf.app.flags.DEFINE_string('omit_draws', 'false',
                            'Omit games that ended in a draw')
 

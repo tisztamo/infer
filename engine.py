@@ -4,7 +4,7 @@ import chess, chess.uci
 import tensorflow as tf
 import numpy as np
 import log
-import input, inference, strength
+import input, inference, strength, backengine
 import flags
 
 FLAGS = flags.FLAGS
@@ -59,26 +59,10 @@ class Engine:
         self.opponent_time = 0
         self.movestogo = 0
 
-    @staticmethod
-    def cp_score(uci_score_or_res_pred):
-        if FLAGS.use_back_engine == "false":
-            return uci_score_or_res_pred
-        else:
-            if uci_score_or_res_pred.cp is None:
-                mate_distance = min(abs(uci_score_or_res_pred.mate), 10)
-                mate_val = 10000 + (10 - mate_distance) * 1000
-                ret_score = -mate_val if uci_score_or_res_pred.mate < 0 else mate_val 
-                return ret_score
-            return uci_score_or_res_pred.cp
-
     def initBackEngine(self):
         if FLAGS.use_back_engine == "false":
             return
-        self.back_engine = chess.uci.popen_engine(FLAGS.back_engine_exe)
-        self.info_handler = chess.uci.InfoHandler()
-        self.back_engine.info_handlers.append(self.info_handler)
-        self.back_engine.uci()
-        self.back_engine.setoption({"Threads": BACK_ENGINE_THREADS})
+        self.back_engine = backengine.BackEngine()
         logger.info("Opened back-engine " + self.back_engine.name)
 
     def get_times(self, board, my_side, time_proportion):
@@ -92,43 +76,43 @@ class Engine:
             btime = self.my_time * time_proportion
         return wtime, btime
 
-    def evaluateStatic(self, board, time_proportion, my_side, back_engine_depth):
-        """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
-        if FLAGS.use_back_engine == "false":
-            predicted_result = inference.predict_result(board)
-            score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
-            return None, score, None
-        else:
-            self.back_engine.position(board.copy())
-            wtime, btime = self.get_times(board, my_side, time_proportion)
-            logger.info("back engine eval on " + board.fen() + ", wtime=" + str(wtime) + ", btime=" + str(btime))
-            move, ponder = self.back_engine.go(depth=back_engine_depth, movestogo=self.movestogo, wtime=wtime, btime=btime)
-            score = self.info_handler.info["score"][1]
-            if score.cp is not None:
-                score = chess.uci.Score(score.cp + random.randint(-EVAL_RANDOMNESS, EVAL_RANDOMNESS), None)
-            if move is not None:
-                move = move.uci()
-            if ponder is not None:
-                ponder = ponder.uci()
-            if move is None:
-                logger.error("Got None from back engine!")
-            return move, score, ponder
+    # def evaluateStatic(self, board, time_proportion, my_side, back_engine_depth):
+    #     """Returns a move (uci), score (chess.uci.Score), ponder (uci) triplet with the static evaluation of the move"""
+    #     if FLAGS.use_back_engine == "false":
+    #         predicted_result = inference.predict_result(board)
+    #         score = np.sum(np.multiply(predicted_result, [-1000, -20, 1000]))
+    #         return None, score, None
+    #     else:
+    #         self.back_engine.position(board.copy())
+    #         wtime, btime = self.get_times(board, my_side, time_proportion)
+    #         logger.info("back engine eval on " + board.fen() + ", wtime=" + str(wtime) + ", btime=" + str(btime))
+    #         move, ponder = self.back_engine.go(depth=back_engine_depth, movestogo=self.movestogo, wtime=wtime, btime=btime)
+    #         score = self.info_handler.info["score"][1]
+    #         if score.cp is not None:
+    #             score = chess.uci.Score(score.cp + random.randint(-EVAL_RANDOMNESS, EVAL_RANDOMNESS), None)
+    #         if move is not None:
+    #             move = move.uci()
+    #         if ponder is not None:
+    #             ponder = ponder.uci()
+    #         if move is None:
+    #             logger.error("Got None from back engine!")
+    #         return move, score, ponder
 
-    def evaluate(self, board, time_proportion = 0.55, my_side=None, back_engine_depth=None):
-        """Calculates the value in centipawns of the board
-         relative to the side to move"""
-        self.eval_count += 1
-        if board.is_game_over(False):
-            if board.is_checkmate():
-                if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
-                    score = MATE_VAL
-                else:
-                    score = -MATE_VAL
-            else:
-                score = STALEMATE_SCORE if board.turn == chess.WHITE else -STALEMATE_SCORE
-            return None, score, None
-        move, score, ponder = self.evaluateStatic(board, time_proportion, my_side, back_engine_depth)
-        return move, self.cp_score(score), ponder
+    # def evaluate(self, board, time_proportion = 0.55, my_side=None, back_engine_depth=None):
+    #     """Calculates the value in centipawns of the board
+    #      relative to the side to move"""
+    #     self.eval_count += 1
+    #     if board.is_game_over(False):
+    #         if board.is_checkmate():
+    #             if board.turn == chess.WHITE and board.result == "1-0" or board.turn == chess.BLACK and board.result == "0-1":
+    #                 score = MATE_VAL
+    #             else:
+    #                 score = -MATE_VAL
+    #         else:
+    #             score = STALEMATE_SCORE if board.turn == chess.WHITE else -STALEMATE_SCORE
+    #         return None, score, None
+    #     move, score, ponder = self.evaluateStatic(board, time_proportion, my_side, back_engine_depth)
+    #     return move, self.cp_score(score), ponder
 
     def candidate_idxs(self, board):
         predictions = inference.predict_move(board.fen())
@@ -147,23 +131,40 @@ class Engine:
         return CandidateMove(self, inference.label_strings[argmax], preds[argmax])
 
     def bestMove(self, board):
-        """Returns the best move in UCI notation, the value of the board after that move, the ponder move and my anticipated nex move (ponderponder)"""
+        """Returns the best move in UCI notation """
         board = board.copy()
         self.eval_count = 0
         ts=time.time()
-        back_engine_uci, pre_score, static_ponder = self.evaluate(board)
-        policy_move = self.policyCandidate(board)
-        selected_move = CandidateMove(self, back_engine_uci, 0)
-        if policy_move.uci != back_engine_uci:
-            board.push_uci(policy_move.uci)
-            _, post_score, _2 = self.evaluate(board, my_side = board.turn)
-            post_score = -post_score
-            logger.info("Back engine: " + str(back_engine_uci) + "(" + str(pre_score) + "), policy: " + policy_move.uci + "(" + str(post_score) + ")")
-            if (pre_score < post_score + random.randint(int(0.7 * policy_bias_cp), int(1.3 * policy_bias_cp))):
-                selected_move = policy_move
-                logger.info("Preferring policy move.")
+        self.back_engine.start_evaluate_board(board)
+        self.back_engine.wait_for_evaluation()
+        _0, _1, _2, pvs = self.back_engine.get_multipv_result()
 
-        logger.info("Selected move: " + str(selected_move.uci))
+        # back_engine_uci, pre_score, static_ponder = self.evaluate(board)
+        # policy_move = self.policyCandidate(board)
+        # selected_move = CandidateMove(self, back_engine_uci, 0)
+        # if policy_move.uci != back_engine_uci:
+        #     board.push_uci(policy_move.uci)
+        #     _, post_score, _2 = self.evaluate(board, my_side = board.turn)
+        #     post_score = -post_score
+        #     logger.info("Back engine: " + str(back_engine_uci) + "(" + str(pre_score) + "), policy: " + policy_move.uci + "(" + str(post_score) + ")")
+        #     if (pre_score < post_score + random.randint(int(0.7 * policy_bias_cp), int(1.3 * policy_bias_cp))):
+        #         selected_move = policy_move
+        #         logger.info("Preferring policy move.")
+
+        winpreds = inference.predict_move(board.fen(), pvs, 1)
+        winmoveidx = np.argmax(winpreds, 0)
+
+        losepreds = inference.predict_move(board.fen(), pvs, 0)
+        losemoveidx = np.argmax(losepreds, 0)
+        
+        if winmoveidx != losemoveidx:
+            print("Win and lose move differs: " + label_strings[winmoveidx] + "/" + label_strings[losemoveidx])
+        
+        selected_move = CandidateMove(self, label_strings[winmoveidx], winpreds[winmoveidx])
+
+
+
+        logger.info("Selected move: " + str(selected_move.uci) + " " + str(winpreds[winmoveidx]))
         return selected_move
 
     def newGame(self):
@@ -234,8 +235,8 @@ def main(unused_argv):
     e = Engine()
     e.initBackEngine()
     b = chess.Board()
-    move = e.move(b)
-    logger.info("Best move:" + str(move.uci) + "(" + str(move.cp_score) + ") ponder " + str(move.ponder))
+    move = e.move(b,{})
+    logger.info("Best move:" + str(move.uci))
 
 if __name__ == "__main__":
     tf.app.run()

@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from model import cnn_model, residual_model
+import input
 
 FEATURE_PLANES = 12
 
@@ -53,11 +54,17 @@ def model_head(data, feature_tensor = None, hidden_layer_sizes = [512], layers_o
     if feature_tensor is None:
         feature_tensor = feature_extractor(data)
 
-    cc = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
+    board = tf.reshape(data[0], [-1, 64 * FEATURE_PLANES])
+    movelayers = tf.reshape(data[1], [-1, 64 * 2 * input.MULTIPV])
+    movescores = data[2]
+    result = tf.reshape(tf.cast(data[3], tf.float32), [-1, 1])
+    print(result.shape)
+
+    allinputs = tf.concat([board, movelayers, movescores, result], axis=1)
 
     prev_output = feature_tensor
     for idx, layer_size in enumerate(hidden_layer_sizes):
-        h_input = tf.concat([prev_output, cc], axis=1)
+        h_input = tf.concat([prev_output, allinputs], axis=1)
         W = weight_variable([int(h_input.shape[1]), layer_size])
         #b = bias_variable([layer_size])
         linear = tf.matmul(h_input, W)# + b

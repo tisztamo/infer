@@ -6,8 +6,9 @@ import chess
 import flags
 
 FLAGS = flags.FLAGS
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 MATE_CP_SCORE = 20000
+MULTIPV = 4
 
 device = None
 
@@ -94,6 +95,13 @@ def decode_board(encoded_board):
             board.set_piece_at(square, piece)
     return board
 
+def encode_move(move):
+    rep = np.zeros((2, 8, 8), dtype=float)
+    if move is not None:
+        rep[0, chess.square_file(move.from_square), chess.square_rank(move.from_square)] = 1
+        rep[1, chess.square_file(move.to_square), chess.square_rank(move.to_square)] = 1
+    return rep
+
 def hash_32(str):
     return zlib.adler32(str.encode('utf-8')) & 0xffffffff
 
@@ -103,6 +111,16 @@ def sideswitch_label(label_str):
     retval[3] = str(9 - int(retval[3]))
     return "".join(retval)
 
+def cp_score(uci_score_or_res_pred):
+    if FLAGS.use_back_engine == "false":
+        return uci_score_or_res_pred
+    else:
+        if uci_score_or_res_pred.cp is None:
+            mate_distance = min(abs(uci_score_or_res_pred.mate), 10)
+            mate_val = 10000 + (10 - mate_distance) * 1000
+            ret_score = -mate_val if uci_score_or_res_pred.mate < 0 else mate_val 
+            return ret_score
+        return uci_score_or_res_pred.cp
 
 def load_labels():
     with open(FLAGS.labels_file) as f:
@@ -121,21 +139,40 @@ def _parse_example(example_proto):
         "move/label": tf.FixedLenFeature((), tf.int64),
         "game/result": tf.FixedLenFeature((), tf.int64)
     }
-    if FLAGS.disable_cp == "false":
-        features["board/cp_score/"] = tf.FixedLenFeature((), tf.int64)
+    for i in range(MULTIPV):
+        features["eval/pv" + str(i) + "/movelayers"] =  tf.FixedLenFeature([128], tf.float32)
+        features["eval/pv" + str(i) + "/cp_score"] =  tf.FixedLenFeature((), tf.int64)
+        features["eval/pv" + str(i) + "/rel_score"] =  tf.FixedLenFeature((), tf.float32)
+
+    #if FLAGS.disable_cp == "false":
+    #    features["board/cp_score/"] = tf.FixedLenFeature((), tf.int64)
 
     parsed_features = tf.parse_single_example(example_proto, features)
     #cp_score = parsed_features["board/cp_score/"] if FLAGS.disable_cp == "false" else 0
     #cp_score = tf.cast(cp_score, tf.float32)
     board = tf.reshape(parsed_features["board/twelvelayer"], (12, 8, 8))
     board = tf.transpose(board, perm=[1, 2, 0])
-    return (board, parsed_features["move/player"]), parsed_features["move/label"], parsed_features["game/result"]
+    movelayers = []
+    movescores = []
+    for i in range(MULTIPV):
+        movescore = parsed_features["eval/pv" + str(i) + "/rel_score"]
+        movelayer = tf.reshape(parsed_features["eval/pv" + str(i) + "/movelayers"], (2, 8, 8))
+        movelayer = tf.transpose(movelayer, perm=[1, 2, 0])
+        movelayer = tf.scalar_mul(movescore, movelayer)
+        movelayers.append(movelayer)
+
+        movescores.append(movescore)
+    
+    movelayers_concat = tf.concat(movelayers, axis=2)
+    movescores_concat = tf.stack(movescores)
+
+    return (board, movelayers_concat, movescores_concat, parsed_features["game/result"], parsed_features["move/player"]), parsed_features["move/label"]
 
 def inputs(filenames, shuffle=True):
     dataset = tf.data.TFRecordDataset(filenames)
     dataset = dataset.map(_parse_example)
     if shuffle:
-        dataset = dataset.shuffle(buffer_size=50000)
+        dataset = dataset.shuffle(buffer_size=5000)
     dataset = dataset.batch(BATCH_SIZE)
     if FLAGS.repeat_dataset != "false":
         dataset = dataset.repeat()

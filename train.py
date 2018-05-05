@@ -9,7 +9,7 @@ import flags
 
 FLAGS = flags.FLAGS
 
-START_LEARNING_RATE = 0.01
+START_LEARNING_RATE = 0.007
 
 # Inputs
 train_filenames = input.find_files(FLAGS.data_dir, "train-*")
@@ -24,19 +24,16 @@ iterator = tf.data.Iterator.from_structure(dataset.output_types,
 
 training_init_op = iterator.make_initializer(dataset)
 
-examples, labels, results = iterator.get_next()
+examples, labels = iterator.get_next()
 
 labels = tf.one_hot(labels, model.NUM_LABELS, dtype=tf.float32)
-results_onehot = tf.one_hot(results + 1, 3, dtype=tf.float32)
 
 # Model
 features = model.feature_extractor(examples)
 logits = model.policy_model(examples, features)
-#result_logits = model.result_model(examples, features)
 
 # Losses
 policy_loss = tf.losses.softmax_cross_entropy(logits=logits, onehot_labels=labels)
-#result_loss = tf.losses.softmax_cross_entropy(logits=result_logits, onehot_labels=results_onehot, weights=2)
 loss = tf.losses.get_total_loss()
 
 #Training

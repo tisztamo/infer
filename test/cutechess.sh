@@ -1,2 +1,2 @@
 #!/bin/bash
-cutechess-cli -fcp conf=humanlike -scp conf=stockfish -both tc=40/40 -games 10 -concurrency 1 -pgnout stockfish_humanlike.pgn
+cutechess-cli -fcp conf=humanlike tc=40/400 -scp conf=stockfish depth=9 tc=1/1 -games 10 -concurrency 1 -pgnout stockfish_humanlike.pgn

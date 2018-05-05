@@ -1,116 +1,55 @@
 from __future__ import division
 from __future__ import print_function
-
 import os
-import time
+import time,random
+from operator import attrgetter
+import traceback
 from os import listdir
 from os.path import isfile, join
 import codecs
 
 import numpy as np
+import math
 import tensorflow as tf
 import chess
 import chess.pgn
 import chess.uci
 import log
 
-import flags, input, engine
+import flags, input, engine, backengine
 
 FLAGS = flags.FLAGS
 labels = []
 
-class InfoHandler(chess.uci.InfoHandler):
-    def __init__(self):
-        super(InfoHandler, self).__init__()
-        self.current_best_move = None
-        self.current_depth = 0
-        self.scores = [0] * 40
-    
-    def depth(self, val):
-        self.current_depth = val
-
-    def score(self, cp, mate, lowerbound, upperbound):
-        self.current_score = chess.uci.Score(cp, mate)
-        self.scores[self.current_depth] = self.current_score
-        super(InfoHandler, self).score(cp, mate, lowerbound, upperbound)
-
-    def pv(self, moves):
-        if self.current_best_move != moves[0]:
-            self.current_best_move = moves[0]
-            self.complexity = self.current_depth
-            #print("Found new best", self.current_best_move, "at", self.current_depth, self.current_score.cp)
-        super(InfoHandler, self).pv(moves)
-
-
-class EvalEngine:
-    def __init__(self):
-        self.depth = 0 if FLAGS.disable_cp != "false" else int(FLAGS.eval_depth)
-        if self.depth > 0:
-            self.uci_engine = chess.uci.popen_engine(FLAGS.engine_exe)
-            self.info_handler = InfoHandler()
-            self.uci_engine.info_handlers.append(self.info_handler)
-            self.uci_engine.uci()
-            self.uci_engine.setoption({"MultiPV": "1"})
-            self.last_command = None
-        self.last_board = None
-
-
-    def start_evaluate_board(self, board, game, move):
-        self.start_ts = time.time()
-        if self.depth > 0:
-            self.uci_engine.isready()
-            self.uci_engine.ucinewgame()
-            self.uci_engine.position(board)
-            self.last_command = self.uci_engine.go(depth=self.depth, async_callback=True)
-        self.last_board = board.copy()
-        self.last_game = game
-        self.last_move = move
-
-    def is_evaluation_available(self):
-        if self.depth == 0:
-            return True
-        return self.last_command is not None and self.last_command.done()
-
-    def get_evaluation_result(self):
-        """ Returns (board, score in cp, best move, ponder move) from the external engine"""
-        if self.depth == 0 or not self.last_command:
-            return self.last_board, 0, None, 0, self.last_game, self.last_move
-        best_move, ponder_move = self.last_command.result()
-        used_time = time.time() - self.start_ts
-        board = self.last_board
-        self.last_command = None
-        self.last_board = None
-        score = engine.Engine.cp_score(self.info_handler.info["score"][1])
-        #print(board.fen(), self.last_move, best_move, score, "complexity:", self.info_handler.complexity, "time:", used_time, "ratio:", self.info_handler.complexity / used_time)
-        return board, score, best_move, self.info_handler.complexity, self.last_game, self.last_move
-
-
 def filter_game(game):
     try:
-        white_is_comp = (game.headers["WhiteIsComp"].lower() == "yes")
-    except:
-        white_is_comp = False
-    try:
-        black_is_comp = (game.headers["BlackIsComp"].lower() == "yes")
-    except:
-        black_is_comp = False
-    try:
         event = game.headers["Event"]
+        white_elo = int(game.headers["WhiteElo"])
+        black_elo = int(game.headers["BlackElo"])
     except:
         return False
+
+    if white_elo < 2200 or black_elo < 2200:
+        return False
+
     if FLAGS.omit_draws == "true" and game.headers["Result"] not in ["1-0", "0-1"]:
         if game.headers["Result"] != "1/2-1/2":
             print("Dropping game with result", game.headers["Result"])
         return False
-    return not white_is_comp and not black_is_comp and event.find("960") == -1
+    return event.find("960") == -1
 
 def filter_move(board, move, player):
+    if FLAGS.prune_opening == "true":
+        move_idx = board.fullmove_number - 1
+        if move_idx < random.randint(0, 12):
+            return False
     if FLAGS.filter_player == "":
         return True
-    if FLAGS.filter_player.startswith("-"):
-        return not FLAGS.filter_player[1:] == player
     else:
-        return FLAGS.filter_player == player
+        if FLAGS.filter_player.startswith("-"):
+            return not FLAGS.filter_player[1:] == player
+        else:
+            return FLAGS.filter_player == player
 
 def parse_eval_comment(move):
     pass
@@ -118,7 +57,7 @@ def parse_eval_comment(move):
 def init_engines(num=4):
     retval = []
     for i in range(num):
-        retval.append(EvalEngine())
+        retval.append(backengine.BackEngine())
     return retval
 
 
@@ -141,7 +80,7 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _convert_to_example(board, move, game, cp_score, complexity, best_move, player):
+def _convert_to_example(board, move, game, player, pvs):
     game_headers = game.headers
     layer_rep = input.encode_board(board)
     move_uci = move.uci()
@@ -154,8 +93,10 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move, play
 
     if board.turn == chess.BLACK:
         move_uci = input.sideswitch_label(move_uci)
-        cp_score = -cp_score
         result_code = -result_code
+        for pv in pvs:
+            if pv.moves is not None:
+                pv.moves[0] = chess.Move.from_uci(input.sideswitch_label(pv.moves[0].uci()))
 
     try:
         ply_count = int(game_headers["PlyCount"])
@@ -166,18 +107,33 @@ def _convert_to_example(board, move, game, cp_score, complexity, best_move, play
     feature_desc = {
         'board/twelvelayer': tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(layer_rep))),
         'board/fen': _bytes_feature(tf.compat.as_bytes(board.fen())),
-        #'board/complexity': _int64_feature(complexity),
-        #'board/best_uci': _bytes_feature(tf.compat.as_bytes(best_move.uci())),
-        #'game/basetime': _int64_feature(base_time),
-        #'game/time_increment': _int64_feature(time_increment),
-        #'game/total_ply_count': _int64_feature(ply_count),
         'game/result': _int64_feature(result_code),
         'move/player': _int64_feature(input.hash_32(player)),
         'move/uci': _bytes_feature(tf.compat.as_bytes(move_uci)),
         'move/label': _int64_feature(labels.index(move_uci))
     }
-    if FLAGS.disable_cp != "false" or int(FLAGS.eval_depth) > 0:
-        feature_desc["board/cp_score/" + FLAGS.eval_depth] = _int64_feature(int(cp_score))
+    if False:
+        print("-------------- " + board.fen())
+        print(board)
+        print("turn:" + str(board.turn) +  "player: " + player)
+        print("move: " + move.uci() + ", normalized: " + move_uci)
+        print("Result: " + result + ", normalized code: " + str(result_code))
+        print(layer_rep)
+
+    max_score = max(pvs, key = attrgetter('score')).score
+    for i in range(input.MULTIPV):
+        if pvs[i].moves is None:
+            rel_score = 0
+            move = input.encode_move(None)
+        else:
+            move = input.encode_move(pvs[i].moves[0])
+            score_diff = pvs[i].score - max_score
+            rel_score =  1 + np.tanh(score_diff * 0.005)  
+            #print("Move: " + pvs[i].moves[0].uci() + ", Score: " + str(pvs[i].score) + ", diff: " + str(score_diff) + " Rel score: " + str(rel_score))
+            #print(move)
+        feature_desc["eval/pv" + str(i) + "/movelayers"] =  tf.train.Feature(float_list=tf.train.FloatList(value=np.ravel(move))),
+        feature_desc["eval/pv" + str(i) + "/cp_score"] =  _int64_feature(pvs[i].score)
+        feature_desc["eval/pv" + str(i) + "/rel_score"] =  _float32_feature(rel_score)
 
     example = tf.train.Example(features=tf.train.Features(feature=feature_desc))
     return example
@@ -199,6 +155,7 @@ def _process_pgn_file(filename, writer, engines):
     num_filtered_out = 0
     num_processed = 0
     num_moves = 0
+    num_dropped_moves = 0
     engine_idx = 0
     engine = engines[engine_idx]
 
@@ -229,13 +186,19 @@ def _process_pgn_file(filename, writer, engines):
                             engine_idx = (engine_idx + 1) % len(engines)
                             engine = engines[engine_idx]
 
+                    if not result_found:
+                        result_found = engine.wait_for_evaluation()
+
                     if result_found:
-                        last_board, score, best_move, complexity, last_game, last_move = engine.get_evaluation_result()
+                        last_board, last_move, last_game, pvs = engine.get_multipv_result()
+                        #print("Best move: " + str(pvs[0].moves[0]) + " for board " + last_board.fen()) 
+                        #print(last_board)
                         player = players[0 if last_board.turn == chess.WHITE else 1]
-                        example = _convert_to_example(last_board, last_move, last_game, score, complexity, best_move, player)
+                        example = _convert_to_example(last_board, last_move, last_game, player, pvs)
                         writer.write(example.SerializeToString())
                 except Exception as x:
-                    print("Error while processing:", x)
+                   print("Error while processing:", x)
+                   traceback.print_exc()
 
                 player = players[0 if board.turn == chess.WHITE else 1]
                 if filter_move(board, move, player):
@@ -243,12 +206,12 @@ def _process_pgn_file(filename, writer, engines):
                     engine.start_evaluate_board(board, game, move)
                     engine_idx = (engine_idx + 1) % len(engines)
                 else:
-                    print("Dropped move by " + player)
+                    num_dropped_moves += 1
                 board.push(move)
 
             num_processed += 1
             if num_processed % 10 == 1:
-                print("Processed", num_processed, "games, dropped", num_filtered_out, ",", num_moves, "moves total.")
+                print("Processed", num_processed, "games, dropped", num_filtered_out, ";", num_moves, "moves, dropped ", num_dropped_moves)
 
 
 def _process_dataset(dataset_name, directory, engines):
@@ -263,7 +226,7 @@ def _process_dataset(dataset_name, directory, engines):
         shard += 1
         output_filename = '%s-%.5d-of-%.5d' % (dataset_name, shard, num_shards)
         print("Processing", filename, "into", output_filename)
-        output_file = os.path.join(FLAGS.output_dir, output_filename)
+        output_file = os.path.join(FLAGS.data_dir, output_filename)
         writer = tf.python_io.TFRecordWriter(output_file)
         processed, dropped, moves = _process_pgn_file(join(directory, filename), writer, engines)
         print("Dropped", dropped, "games, processed", processed, ", containing", moves, "halfmoves.")
@@ -273,10 +236,10 @@ def _process_dataset(dataset_name, directory, engines):
 
 def main(unused_argv):
     global labels
-    print('Saving results to %s' % FLAGS.output_dir)
+    print('Saving results to %s' % FLAGS.data_dir)
     labels, _ = input.load_labels()
 
-    engines = init_engines(3)
+    engines = init_engines(7)
 
     #_process_dataset('validation', FLAGS.validation_dir, engines)
     _process_dataset('train', FLAGS.train_dir, engines)

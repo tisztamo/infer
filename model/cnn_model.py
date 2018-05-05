@@ -10,7 +10,11 @@ class CNNModel:
 
     def feature_extractor(self, data):
         #input = slim.batch_norm(data[0], activation_fn=None)
-        input = data[0]
+        board = data[0]
+        movelayers = data[1]
+
+        input = tf.concat([board, movelayers], axis=3)
+
         h_conv1 = extractor_layer(input, 16, 32, 16, 16)
         input2 = tf.concat([input, h_conv1], axis=3)
         h_conv2 = extractor_layer(input2, 32, 384, 64, 32)
